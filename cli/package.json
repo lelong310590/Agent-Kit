@@ -1,5 +1,5 @@
 {
-  "name": "@longln/ag-kit",
+  "name": "@longlengoc90/ag-kit",
   "version": "1.0.0",
   "description": "Local CLI to initialize AG Tool Kit configurations",
   "main": "dist/index.js",
