@@ -4,7 +4,11 @@
   "description": "Local CLI to initialize AG Tool Kit configurations",
   "main": "dist/index.js",
   "bin": {
+    "ag-kit": "./dist/index.js",
     "longln-ag-kit": "./dist/index.js"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
     "build": "tsc",
