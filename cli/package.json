@@ -1,8 +1,12 @@
 {
   "name": "@longlengoc90/ag-kit",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Local CLI to initialize AG Tool Kit configurations",
   "main": "dist/index.js",
+  "files": [
+    "dist",
+    "templates"
+  ],
   "bin": {
     "ag-kit": "./dist/index.js",
     "longln-ag-kit": "./dist/index.js"
@@ -11,7 +15,7 @@
     "access": "public"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && node copy-templates.js",
     "start": "node dist/index.js",
     "prepublishOnly": "npm run build"
   },

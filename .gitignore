@@ -4,6 +4,7 @@ cli/node_modules/
 
 # Production builds
 cli/dist/
+cli/templates/
 
 # Logs
 npm-debug.log*

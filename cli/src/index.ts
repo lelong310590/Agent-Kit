@@ -32,7 +32,7 @@ program
 
       if (!await fs.pathExists(globalAgentsPath)) {
         console.log(`ℹ️ Centralized global directory not found. Creating at: ${globalAgentsPath}`);
-        const sourceTemplate = path.resolve(__dirname, '../../.agents');
+        const sourceTemplate = path.resolve(__dirname, '../templates');
         try {
           await fs.copy(sourceTemplate, globalAgentsPath);
           console.log('✅ Initialized global `.agents` template successfully.');
@@ -55,7 +55,7 @@ program
       }
     } else {
       // Standard Copy
-      const sourceTemplate = path.resolve(__dirname, '../../.agents');
+      const sourceTemplate = path.resolve(__dirname, '../templates');
       console.log(`📦 Copying template from: ${sourceTemplate} to: ${targetPath}`);
 
       try {
