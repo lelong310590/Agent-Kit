@@ -1,3 +1,7 @@
+---
+description: Quy trình lập kế hoạch triển khai cho các tác vụ lập trình phức tạp.
+---
+
 # Workflow Command: /plan
 
 Quy trình lập kế hoạch triển khai cho các tác vụ lập trình phức tạp.

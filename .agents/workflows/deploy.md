@@ -1,3 +1,7 @@
+---
+description: Quy trình đóng gói, ghi nhận thay đổi và sẵn sàng bàn giao sản phẩm.
+---
+
 # Workflow Command: /deploy
 
 Quy trình đóng gói, ghi nhận thay đổi và sẵn sàng bàn giao sản phẩm.

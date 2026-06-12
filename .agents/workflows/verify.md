@@ -1,3 +1,7 @@
+---
+description: Quy trình xác minh chất lượng và tính ổn định của mã nguồn sau khi chỉnh sửa.
+---
+
 # Workflow Command: /verify
 
 Quy trình xác minh chất lượng và tính ổn định của mã nguồn sau khi chỉnh sửa.

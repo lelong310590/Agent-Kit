@@ -1,3 +1,7 @@
+---
+description: Quy trình gỡ lỗi và phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA) một cách hệ thống.
+---
+
 # Workflow Command: /debug
 
 Quy trình gỡ lỗi và phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA) một cách hệ thống.
