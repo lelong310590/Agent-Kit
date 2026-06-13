@@ -41,6 +41,8 @@ Khi Tác nhân kích hoạt $\rightarrow$ Kiểm tra frontmatter "skills:" $\rig
 
 **LUÔN HOẠT ĐỘNG: Trước khi phản hồi bất kỳ yêu cầu lập trình hoặc thiết kế nào, hãy tự động phân tích và chọn chuyên gia phù hợp.**
 
+> 🔴 **BẮT BUỘC:** Bạn phải tuân thủ quy trình định tuyến tự động được định nghĩa trong [intelligent-routing](file:///d:/work/ag-tool-kit/.agents/skills/intelligent-routing/SKILL.md).
+
 ### Quy Trình Định Tuyến Tự Động
 1.  **Phân tích (Silent Analysis)**: Nhận diện domain công việc (Frontend, Backend, Security, PM, QA...) từ yêu cầu của người dùng.
 2.  **Chọn Agent**: Chọn chuyên gia tương ứng trong thư mục `.agents/agent/`.
