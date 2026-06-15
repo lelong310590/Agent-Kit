@@ -1,30 +1,30 @@
-# Nguyên Tắc Thiết Kế GraphQL
+# GraphQL Design Principles
 
-> Truy vấn linh hoạt cho dữ liệu phức tạp và có tính liên kết cao.
+> Flexible querying for complex and highly interconnected data.
 
-## Khi Nào Nên Sử Dụng
-
-```
-✅ Phù hợp:
-├── Dữ liệu phức tạp, liên kết chặt chẽ
-├── Nhiều nền tảng frontend khác nhau
-├── Client cần khả năng truy vấn linh hoạt
-├── Yêu cầu về dữ liệu liên tục thay đổi
-└── Cần tối ưu hóa việc lấy thừa dữ liệu (over-fetching)
-
-❌ Không phù hợp:
-├── Các thao tác CRUD đơn giản
-├── Tác vụ tải lên file (file upload) chiếm tỷ trọng lớn
-├── Bộ đệm HTTP (HTTP caching) đóng vai trò quan trọng
-└── Đội ngũ phát triển chưa quen thuộc với GraphQL
-```
-
-## Nguyên Tắc Thiết Kế Schema
+## When to Use
 
 ```
-Nguyên tắc:
-├── Tư duy theo dạng đồ thị (graph), không phải bảng quan hệ (relational tables)
-├── Thiết kế schema dựa trên nhu cầu của giao diện (UI)
-├── Sử dụng các kiểu dữ liệu mutation payload có ý nghĩa rõ ràng
-└── Sử dụng quy ước đặt tên nhất quán (ví dụ: camelCase)
+✅ Best Suited For:
+├── Complex, highly interconnected data
+├── Multiple different frontend platforms
+├── Clients needing flexible query capabilities
+├── Constantly changing data requirements
+└── Minimizing over-fetching
+
+❌ Not Suited For:
+├── Simple CRUD operations
+├── High volume of file upload operations
+├── HTTP caching playing a critical role
+└── Team unfamiliar with GraphQL
+```
+
+## Schema Design Principles
+
+```
+Principles:
+├── Think in graphs, not relational tables
+├── Design schema based on UI needs
+├── Use mutation payload types with clear meaning
+└── Use consistent naming conventions (e.g., camelCase)
 ```

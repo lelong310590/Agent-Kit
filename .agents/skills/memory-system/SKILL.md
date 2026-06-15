@@ -1,84 +1,84 @@
 ---
 name: memory-system
-description: Quản lý bộ nhớ lưu trữ phiên chéo (cross-session). Cho phép các agent ghi nhớ tùy chọn của người dùng, quy ước dự án và các quyết định trước đó giữa các phiên làm việc khác nhau thông qua tệp chỉ mục MEMORY.md và các tệp chủ đề có cấu trúc.
-when_to_use: "Khi người dùng nói 'hãy ghi nhớ điều này', 'lưu lại cái này để dùng sau', 'đừng quên', hoặc khi bắt đầu một phiên làm việc mới và cần gợi nhớ lại ngữ cảnh cũ. Đồng thời áp dụng khi quy trình /remember được kích hoạt."
+description: Manages cross-session memory. Allows agents to remember user preferences, project conventions, and past decisions across different sessions via a structured MEMORY.md index file and topic files.
+when_to_use: "When the user says 'remember this', 'save this for later', 'don't forget', or when starting a new session and needing to recall past context. Also applies when the /remember workflow is triggered."
 allowed-tools: Read, Write, Grep, Glob
 effort: low
 ---
 
-# Hệ Thống Bộ Nhớ — Bộ Nhớ Phiên Chéo Lưu Trữ Lâu Dài
+# Memory System — Long-Term Cross-Session Memory
 
-> Cho phép các agent ghi nhớ thông tin giữa các phiên làm việc. Không bao giờ phải tìm hiểu lại những gì đã biết.
+> Allows agents to remember information across sessions. Never have to relearn what is already known.
 
-## Tổng quan
+## Overview
 
-Hệ thống Bộ nhớ cung cấp **bộ nhớ lưu trữ lâu dài và có thể tìm kiếm** tồn tại qua các phiên làm việc khác nhau. Thay vì phải giải thích lại các tùy chọn, quy ước và quyết định trước đó mỗi lần bắt đầu, agent chỉ cần đọc tệp chỉ mục `MEMORY.md` có cấu trúc và các tệp chủ đề (topic files).
+The Memory System provides a **long-term, searchable memory** that persists across different sessions. Instead of having to re-explain preferences, conventions, and past decisions each time you start, the agent simply reads a structured `MEMORY.md` index file and associated topic files.
 
-**Ảnh hưởng Token:** +1.000 token để nạp chỉ mục, nhưng tiết kiệm được từ 3.000 - 10.000 token nhờ loại bỏ việc phải tìm hiểu lại thông tin từ đầu.
+**Token Impact:** ~1,000 tokens to load the index, but saves between 3,000 to 10,000 tokens by eliminating the need to relearn information from scratch.
 
 ---
 
-## Kiến Trúc
+## Architecture
 
 ```
 .agents/memory/
-├── MEMORY.md              ← Chỉ mục dung lượng nhẹ (tối đa 200 dòng)
-├── user-preferences.md    ← Tệp chủ đề: vai trò người dùng, phong cách, công cụ
-├── project-conventions.md ← Tệp chủ đề: tiêu chuẩn lập trình, các mẫu thiết kế
-├── tech-decisions.md      ← Tệp chủ đề: các quyết định kiến trúc trước đây
-├── feedback-history.md    ← Tệp chủ đề: những gì người dùng thích/không thích
-└── [topic-name].md        ← Các tệp chủ đề bổ sung khi cần thiết
+├── MEMORY.md              ← Lightweight index file (maximum 200 lines)
+├── user-preferences.md    ← Topic file: user roles, preferences, tools
+├── project-conventions.md ← Topic file: coding standards, design patterns
+├── tech-decisions.md      ← Topic file: past architectural decisions
+├── feedback-history.md    ← Topic file: what the user likes/dislikes
+└── [topic-name].md        ← Additional topic files as needed
 ```
 
 ---
 
-## Định Dạng Chỉ Mục MEMORY.md
+## MEMORY.md Index Format
 
-Tệp chỉ mục là một **tệp con trỏ dung lượng nhẹ** — bao gồm các mục ngắn tham chiếu đến các tệp chủ đề để biết thêm chi tiết.
+The index file is a **lightweight pointer file** — containing short entries that reference topic files for more details.
 
-**Quy tắc:**
-- Tổng dung lượng tối đa **200 dòng**
-- Mỗi mục: **tối đa khoảng 150 ký tự**
-- Định dạng: `- [loại] tóm tắt → tệp-chủ-đề.md`
-- Các loại (types): `[user]` `[feedback]` `[project]` `[reference]`
+**Rules:**
+- Maximum total length of **200 lines**
+- Each entry: **maximum of about 150 characters**
+- Format: `- [type] summary → topic-file.md`
+- Types: `[user]` `[feedback]` `[project]` `[reference]`
 
-**Ví dụ:**
+**Example:**
 ```markdown
-# Chỉ Mục Bộ Nhớ (Memory Index)
+# Memory Index
 
 ## User
-- [user] Thích chế độ dark mode, sử dụng Windows 11, PowerShell → user-preferences.md
-- [user] Kỹ sư DevOps cấp cao, 8 năm kinh nghiệm → user-preferences.md
-- [user] Ngôn ngữ chính: Tiếng Anh, thỉnh thoảng dùng Tiếng Thổ Nhĩ Kỳ → user-preferences.md
+- [user] Prefers dark mode, uses Windows 11, PowerShell → user-preferences.md
+- [user] Senior DevOps Engineer, 8 years of experience → user-preferences.md
+- [user] Main language: English, occasionally Turkish → user-preferences.md
 
 ## Project
-- [project] Luôn sử dụng bun thay vì npm → project-conventions.md
-- [project] Ưu tiên sử dụng Tailwind v4, không dùng v3 → tech-decisions.md
-- [project] Không sử dụng màu tím/violet trong giao diện (UI) → project-conventions.md
+- [project] Always use bun instead of npm → project-conventions.md
+- [project] Prefer Tailwind v4 over v3 → tech-decisions.md
+- [project] Do not use purple/violet in the user interface (UI) → project-conventions.md
 
 ## Feedback
-- [feedback] Người dùng thích câu trả lời ngắn gọn, không rườm rà → feedback-history.md
-- [feedback] Người dùng không thích giải thích dài dòng → feedback-history.md
-- [feedback] Người dùng thích bảng biểu hơn là danh sách gạch đầu dòng → feedback-history.md
+- [feedback] User prefers concise, direct responses → feedback-history.md
+- [feedback] User dislikes long-winded explanations → feedback-history.md
+- [feedback] User prefers tables over bullet points → feedback-history.md
 
 ## Reference
-- [reference] Squid proxy chạy trên cổng 3128 → infrastructure-notes.md
-- [reference] Quy trình Git: nhánh tính năng (feature) → main → project-conventions.md
+- [reference] Squid proxy runs on port 3128 → infrastructure-notes.md
+- [reference] Git workflow: feature branch → main → project-conventions.md
 ```
 
 ---
 
-## Định Dạng Tệp Chủ Đề (Topic File)
+## Topic File Format
 
-Mỗi tệp chủ đề chứa phần **frontmatter** và **nội dung có cấu trúc**:
+Each topic file contains **frontmatter** and **structured content**:
 
 ```markdown
 ---
-topic: [tên-chủ-đề]
+topic: [topic-name]
 last_updated: YYYY-MM-DD
 ---
 
-# Tiêu Đề Chủ Đề
+# Topic Title
 
-Các ghi chú chi tiết, cấu hình, tùy chọn hoặc quyết định liên quan đến chủ đề này. Sử dụng các danh sách gạch đầu dòng rõ ràng và khối mã nếu cần thiết.
+Detailed notes, configurations, preferences, or decisions related to this topic. Use clear bullet points and code blocks where necessary.
 ```

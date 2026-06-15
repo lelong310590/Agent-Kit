@@ -1,37 +1,37 @@
 ---
 name: php-laravel-expert
-description: Chuyên gia phát triển ứng dụng web PHP sử dụng Laravel Framework. Thiết kế Service Container, Eloquent ORM, Form Request Validation, API Resources, Queues và Artisan Commands.
-when_to_use: "Dự án phát hiện có file composer.json chứa 'laravel/framework' hoặc file 'artisan' ở root, hoặc các file mở rộng .php"
+description: Expert in PHP web application development using the Laravel Framework. Designed Service Container, Eloquent ORM, Form Request Validation, API Resources, Queues, and Artisan Commands.
+when_to_use: "Project detected to have a composer.json containing 'laravel/framework' or an 'artisan' file at the root, or files with a .php extension"
 ---
 
-# Kỹ Năng: PHP & Laravel Expert
+# Skill: PHP & Laravel Expert
 
-Chỉ dẫn chuyên sâu này được tự động nạp khi phát hiện dự án sử dụng PHP và Laravel Framework.
+This deep-dive guide is automatically loaded when the project is detected to use PHP and the Laravel Framework.
 
 ---
 
 ## 🏗️ 1. Service Container & IoC
 
-*   **Dependency Injection**: Tận dụng tối đa Service Container để tự động inject các class dependencies qua `constructor` hoặc method injection.
-*   **Service Providers**: Đăng ký các binding, singleton, hoặc boot-up logic trong các Service Provider (ví dụ: `AppServiceProvider`).
-*   **Facades vs Contracts**: Ưu tiên sử dụng Dependency Injection qua Contracts để tăng khả năng viết unit test dễ dàng. Chỉ sử dụng Facades cho các tác vụ nhanh hoặc script nhỏ.
+*   **Dependency Injection**: Maximize the use of the Service Container to automatically inject class dependencies via `constructor` or method injection.
+*   **Service Providers**: Register bindings, singletons, or boot-up logic within Service Providers (e.g., `AppServiceProvider`).
+*   **Facades vs Contracts**: Prefer using Dependency Injection via Contracts to improve unit testability. Only use Facades for quick tasks or small scripts.
 
 ---
 
 ## 💾 2. Eloquent ORM & Migrations
 
-*   **Eloquent Relationships**: Khai báo rõ ràng các quan hệ (`hasMany`, `belongsTo`, `belongsToMany`) và luôn sử dụng **Eager Loading** (`with()`) để phòng chống lỗi truy vấn N+1.
+*   **Eloquent Relationships**: Clearly declare relationships (`hasMany`, `belongsTo`, `belongsToMany`) and always use **Eager Loading** (`with()`) to prevent N+1 query problems.
 *   **Database Migrations**:
-    *   Mọi thay đổi database schema bắt buộc phải được thực hiện qua file Migration.
-    *   Đảm bảo hàm `down()` được định nghĩa chính xác để hỗ trợ rollback hoàn toàn.
-*   **Mass Assignment Protection**: Sử dụng `$fillable` hoặc `$guarded` trong Model để bảo vệ hệ thống khỏi tấn công gán dữ liệu hàng loạt.
+    *   All database schema changes must be implemented via Migration files.
+    *   Ensure the `down()` method is defined accurately to support clean rollbacks.
+*   **Mass Assignment Protection**: Use `$fillable` or `$guarded` in Models to protect the system against mass assignment vulnerabilities.
 
 ---
 
 ## 🛡️ 3. HTTP Layer & Validation
 
-*   **Form Requests**: Không viết validation logic trong Controller. Luôn tạo các class Form Request riêng biệt (`php artisan make:request`) để xử lý phân quyền và kiểm tra tính hợp lệ của payload.
-*   **API Resources**: Sử dụng `Eloquent Resources` (`php artisan make:resource`) để định dạng JSON đầu ra, tách biệt cấu trúc bảng database vật lý với API public.
-*   **Middleware**: Áp dụng các middleware bảo mật mặc định (xác thực CSRF, Auth, Rate Limiting).
-*   **Artisan Commands**: Luôn sử dụng lệnh Artisan để sinh mã nguồn chuẩn hóa cấu trúc thư mục của Laravel.
-*   **Queues & Jobs**: Đưa các tác vụ nặng (như gửi email, xử lý ảnh, đồng bộ dữ liệu bên thứ ba) vào Queue Background Job để tránh làm treo request của người dùng.
+*   **Form Requests**: Do not write validation logic inside Controllers. Always create dedicated Form Request classes (`php artisan make:request`) to handle authorization and payload validation.
+*   **API Resources**: Use `Eloquent Resources` (`php artisan make:resource`) to format output JSON, decoupling the physical database table structure from the public API.
+*   **Middleware**: Apply default security middleware (CSRF validation, Auth, Rate Limiting).
+*   **Artisan Commands**: Always use Artisan commands to generate code, standardizing the directory structure of Laravel.
+*   **Queues & Jobs**: Push heavy tasks (such as sending emails, image processing, or third-party data synchronization) to Queue Background Jobs to avoid blocking user requests.

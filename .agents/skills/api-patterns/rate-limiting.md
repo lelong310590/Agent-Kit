@@ -1,21 +1,21 @@
-# Nguyên Tắc Giới Hạn Tần Suất (Rate Limiting Principles)
+# Rate Limiting Principles
 
-> Bảo vệ API của bạn khỏi bị lạm dụng và quá tải.
+> Protect your API from abuse and overload.
 
-## Tại Sao Cần Giới Hạn Tần Suất
+## Why Rate Limit?
 
 ```
-Bảo vệ chống lại:
-├── Các cuộc tấn công brute force
-├── Cạn kiệt tài nguyên hệ thống
-├── Vượt hạn mức chi phí (nếu dùng dịch vụ trả phí theo lượng sử dụng)
-└── Sử dụng tài nguyên không công bằng
+Protect against:
+├── Brute force attacks
+├── System resource exhaustion
+├── Cost overruns (if using pay-per-use services)
+└── Unfair resource usage
 ```
 
-## Lựa Chọn Chiến Lược
+## Strategy Selection
 
-| Loại chiến lược | Cách thức | Khi nào dùng |
+| Strategy Type | How it works | When to use |
 |------|-----|------|
-| **Token bucket** | Cho phép đột biến (burst), nạp lại theo thời gian | Hầu hết các API |
-| **Sliding window** | Phân phối mượt mà theo cửa sổ trượt | Yêu cầu giới hạn nghiêm ngặt |
-| **Fixed window** | Đặt lại (reset) tại các khoảng thời gian cố định | Yêu cầu đơn giản |
+| **Token bucket** | Allows burst, refilled over time | Most APIs |
+| **Sliding window** | Smooth distribution along a sliding window | Strict limits required |
+| **Fixed window** | Resets at fixed time intervals | Simple requirements |

@@ -1,36 +1,40 @@
 ---
-description: Quy trình lập kế hoạch triển khai cho các tác vụ lập trình phức tạp.
+description: Process for creating implementation plans for complex coding tasks.
 ---
 
 # Workflow Command: /plan
 
-Quy trình lập kế hoạch triển khai cho các tác vụ lập trình phức tạp.
+Process for creating implementation plans for complex coding tasks.
 
 ---
 
-## 📋 Mô Tả
-Lệnh `/plan` được kích hoạt khi bắt đầu một tính năng mới, tái cấu trúc mã nguồn (refactoring) hoặc khi thực hiện một sửa đổi kiến trúc lớn. Mục tiêu là giúp AI Agent và người dùng đồng thuận về phương án kỹ thuật trước khi thay đổi bất kỳ dòng code nào.
+## 📋 Description
+
+The `/plan` command is activated when starting a new feature, refactoring, or performing a major architectural modification. The goal is to align the AI Agent and the user on the technical approach before modifying any code.
 
 ---
 
-## 🔄 Các Bước Thực Hiện (Execution Steps)
+## 🔄 Execution Steps
 
-### Bước 1: Khảo Sát & Phân Tích (Research)
-1.  Quét mã nguồn dự án để xác định:
-    *   Các file sẽ bị ảnh hưởng trực tiếp.
-    *   Các thư viện liên quan và phiên bản hiện tại.
-    *   Các quy tắc lập trình tương ứng trong `.agents/rules/`.
-2.  **Tuyệt đối không** tạo mới hay sửa đổi file code trong bước này.
+### Step 1: Research & Analysis
 
-### Bước 2: Tạo Bản Kế Hoạch (Design & Document)
-1.  Tạo file `implementation_plan.md` tại thư mục `.system_generated/` hoặc thư mục do IDE chỉ định dựa trên biểu mẫu tại [templates/implementation_plan.template.md](file:///d:/work/ag-tool-kit/templates/implementation_plan.template.md).
-2.  Ghi nhận đầy đủ:
-    *   Mục tiêu kỹ thuật.
-    *   Quyết định thiết kế và các thay đổi có thể gây lỗi hệ thống (breaking changes).
-    *   Các câu hỏi chưa rõ ràng cần người dùng trả lời (Open Questions).
-    *   Danh sách file sẽ sửa đổi được phân loại theo component.
+1.  Scan the project source code to identify:
+    *   Files that will be directly affected.
+    *   Relevant libraries and their current versions.
+    *   Corresponding coding standards in `.agents/rules/`.
+2.  **Strictly forbidden** to create new or modify existing code files in this step.
 
-### Bước 3: Phê Duyệt từ Người Dùng (User Approval)
-1.  Gửi thông báo ngắn gọn cho người dùng biết kế hoạch đã sẵn sàng để review.
-2.  **Dừng hoạt động** và chờ đợi sự phê duyệt hoặc phản hồi chỉnh sửa từ người dùng.
-3.  Khi người dùng đã duyệt, tạo tiếp file `task.md` (Checklist công việc) để bắt đầu bước lập trình.
+### Step 2: Create Implementation Plan (Design & Document)
+
+1.  Create an `implementation_plan.md` file in the `.system_generated/` directory or the directory specified by the IDE, based on the template at [templates/implementation_plan.template.md](file:///d:/work/ag-tool-kit/templates/implementation_plan.template.md).
+2.  Document fully:
+    *   Technical goals.
+    *   Design decisions and potential breaking changes.
+    *   Open questions requiring user feedback.
+    *   List of files to be modified, categorized by component.
+
+### Step 3: User Approval
+
+1.  Send a brief notification to the user letting them know the plan is ready for review.
+2.  **Halt execution** and wait for user approval or modification feedback.
+3.  Once approved by the user, create the `task.md` file (Task Checklist) to start coding.

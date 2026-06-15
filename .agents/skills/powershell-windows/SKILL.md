@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # PowerShell Windows Patterns
 
-&gt; Critical patterns and pitfalls for Windows PowerShell.
+> Critical patterns and pitfalls for Windows PowerShell.
 
 ---
 

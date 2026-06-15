@@ -1,114 +1,114 @@
 ---
 name: code-review-graph
-description: Đánh giá mã nguồn tối ưu hóa token bằng sơ đồ cây AST Tree-sitter và MCP. Giảm mức tiêu thụ token của AI trên các codebase lớn bằng cách tính toán vùng ảnh hưởng (blast radius) của các thay đổi thay vì đọc toàn bộ codebase. Sử dụng cơ sở dữ liệu đồ thị SQLite để phân tích cấu trúc.
-when_to_use: "Khi đánh giá mã nguồn trong các codebase lớn (trên 500 file), khi chi phí token cao, khi thực hiện các thay đổi trên nhiều file có phụ thuộc chéo giữa các module hoặc trong các monorepo. Đồng thời dùng để phát hiện code chết (dead code), trực quan hóa kiến trúc và xem trước kết quả refactor. KHÔNG dùng cho các dự án nhỏ dưới 200 file với các thay đổi đơn lẻ và cô lập."
+description: Source code review token optimization using Tree-sitter AST and MCP. Reduces AI token consumption on large codebases by calculating the blast radius of changes instead of reading the entire codebase. Uses an SQLite graph database for structural analysis.
+when_to_use: "When reviewing source code in large codebases (over 500 files), when token costs are high, when making changes across multiple files with cross-module dependencies, or in monorepos. Also used to detect dead code, visualize architecture, and preview refactoring results. DO NOT use for small projects under 200 files with single and isolated changes."
 allowed-tools: Read, Grep, Glob, Bash
 effort: medium
 ---
 
-# Bản Đồ Đánh Giá Mã Nguồn (Code Review Graph) — Tối Ưu Hóa Ngữ Cảnh Qua MCP
+# Code Review Graph — Context Optimization Via MCP
 
-> Giảm đáng kể lượng token tiêu thụ trên các codebase lớn bằng cách cung cấp cho AI một bản đồ cấu trúc thay vì bắt nó đọc toàn bộ mã nguồn. Lợi ích tỷ lệ thuận với quy mô dự án.
+> Significantly reduces token consumption on large codebases by providing the AI with a structural map instead of forcing it to read the entire source code. Benefits scale with project size.
 
-## Tổng quan
+## Overview
 
-`code-review-graph` là một máy chủ MCP sử dụng **Tree-sitter** để phân tích cú pháp tĩnh codebase của bạn thành một sơ đồ đồ thị AST và lưu trữ trong **SQLite**. Khi trợ lý AI cần ngữ cảnh để thực hiện tác vụ, nó sẽ truy vấn đồ thị trước để chỉ lấy ra các file nằm trong **vùng ảnh hưởng (blast radius)** của thay đổi, thay vì đọc mọi file trong thư mục.
+`code-review-graph` is an MCP server that uses **Tree-sitter** to statically parse your codebase into an AST graph and store it in **SQLite**. When an AI assistant needs context to perform a task, it queries the graph first to retrieve only the files within the **blast radius** of the changes, rather than reading every file in the directory.
 
-**Ảnh hưởng Token (minh họa - thay đổi tùy theo codebase):**
+**Token Impact (illustrative - varies by codebase):**
 
-| Loại Codebase | Đặc điểm |
+| Codebase Type | Characteristics |
 |---------------|---------|
-| Monorepo lớn (10K+ file) | Tiết kiệm lớn nhất — đồ thị chỉ đọc một phần nhỏ các file liên quan |
-| Dự án quy mô trung bình (1K-5K file) | Giảm thiểu đáng kể token trên các thay đổi đa file |
-| Dự án nhỏ (<200 file) | Ít lợi ích — chi phí quản lý đồ thị có thể vượt quá lượng token tiết kiệm |
+| Large Monorepo (10K+ files) | Greatest savings — the graph reads only a small fraction of related files |
+| Medium-sized Project (1K-5K files) | Significantly reduces tokens for multi-file changes |
+| Small Project (<200 files) | Minimal benefit — graph management overhead may exceed saved tokens |
 
-> **Về chất lượng:** Việc giới hạn phạm vi của AI trong vùng ảnh hưởng giúp giảm nhiễu thông tin, từ đó nâng cao độ tập trung và chất lượng đánh giá mã nguồn. Hãy đo lường thực tế trên kho mã nguồn của bạn thay vì dựa vào các hệ số cố định.
-
----
-
-## Giao Thức Khởi Tạo (Bootstrap Protocol - Opt-in)
-
-Khi được kích hoạt trong quy trình lập kế hoạch `/plan` hoặc sử dụng thông thường trên một dự án quy mô trung bình đến lớn, hãy kiểm tra xem phân tích đồ thị có khả dụng hay không trước khi phụ thuộc vào nó:
-1. **Bước 1:** Kiểm tra xem công cụ đã được cài đặt chưa: chạy `Get-Command code-review-graph` (trên Windows) hoặc `which code-review-graph` (trên macOS/Linux).
-2. **Bước 2:** Kiểm tra xem thư mục cấu hình `.code-review-graph/` có tồn tại trong không gian làm việc hay không.
-3. **Bước 3:** Nếu công cụ đã được cài đặt nhưng chưa có cơ sở dữ liệu chỉ mục, hãy hỏi ý kiến người dùng trước khi chạy lệnh `code-review-graph build` (quá trình này sẽ quét toàn bộ dự án).
-4. **Bước 4:** Nếu chưa cài đặt và dự án có quy mô lớn, hãy hỏi người dùng: *"Bạn có muốn cài đặt `code-review-graph` (qua pip) và xây dựng bản đồ cục bộ để tiết kiệm token cho dự án này không?"*. Tuyệt đối không tự ý cài đặt hoặc chạy lệnh build mà không có sự xác nhận của người dùng.
+> **Regarding Quality:** Limiting the AI's scope to the blast radius reduces information noise, thereby improving focus and code review quality. Measure actual results on your codebase rather than relying on fixed factors.
 
 ---
 
-## Khi Nào Nên Dùng vs Khi Nào Nên Bỏ Qua
+## Bootstrap Protocol (Opt-in)
 
-### ✅ Nên cài đặt nếu:
-- Codebase có từ **500+ file** trở lên.
-- Bạn thường xuyên thực hiện **thay đổi trên nhiều file** có quan hệ phụ thuộc chéo giữa các module.
-- Bạn chi tiêu nhiều chi phí token cho trợ lý AI hàng tháng.
-- Bạn làm việc với **monorepos**, microservices, hoặc các dự án TypeScript đa package.
-- Bạn muốn **nâng cao chất lượng đánh giá mã nguồn** bên cạnh việc tiết kiệm chi phí.
-
-### ❌ Bỏ qua nếu:
-- Codebase có **dưới ~200 file** và các thay đổi chỉ mang tính cô lập trên từng file đơn lẻ.
-- Sử dụng nhiều **cú pháp động** (dynamic patterns như reflection, sinh code runtime, dynamic imports) khiến phân tích tĩnh không hiệu quả.
-- Bạn muốn hệ thống **không cần bảo trì** — vì đồ thị cần được đồng bộ định kỳ khi code thay đổi.
-
-### ⚠️ Cần đánh giá kỹ nếu:
-- Codebase có quy mô từ **200–500 file** — hãy chạy đo lường thử nghiệm trước khi quyết định áp dụng lâu dài.
-- Có sự kết hợp giữa **cú pháp tĩnh và cú pháp động** — hãy thử nghiệm trên các commit đại diện để đánh giá độ chính xác.
+When activated in the `/plan` workflow or used normally on a medium to large scale project, verify if graph analysis is available before depending on it:
+1. **Step 1:** Check if the tool is installed: run `Get-Command code-review-graph` (on Windows) or `which code-review-graph` (on macOS/Linux).
+2. **Step 2:** Check if the `.code-review-graph/` configuration directory exists in the workspace.
+3. **Step 3:** If the tool is installed but no index database exists, ask for user permission before running `code-review-graph build` (this will scan the entire project).
+4. **Step 4:** If not installed and the project is large, ask the user: *"Would you like to install `code-review-graph` (via pip) and build a local map to save tokens for this project?"*. Never install or run the build command without user confirmation.
 
 ---
 
-## Cách Thức Hoạt Động (4 Tầng)
+## When to Use vs. When to Skip
+
+### ✅ Should install if:
+- The codebase has **500+ files** or more.
+- You frequently make **changes across multiple files** with cross-module dependencies.
+- You spend a significant amount on token costs for the AI assistant monthly.
+- You work with **monorepos**, microservices, or multi-package TypeScript projects.
+- You want to **improve code review quality** in addition to saving costs.
+
+### ❌ Skip if:
+- The codebase has **fewer than ~200 files** and changes are isolated to individual files.
+- Heavily uses **dynamic patterns** (such as reflection, runtime code generation, dynamic imports) making static analysis ineffective.
+- You want a **zero-maintenance** system — since the graph needs periodic synchronization as the code changes.
+
+### ⚠️ Evaluate carefully if:
+- The codebase has **200–500 files** — run pilot measurements before deciding on long-term adoption.
+- There is a mix of **static and dynamic patterns** — test on representative commits to evaluate accuracy.
+
+---
+
+## How It Works (4 Layers)
 
 ```
-Tầng 1: PHÂN TÍCH (PARSE)  ──> Tree-sitter dựng cây AST từ 19 ngôn ngữ hỗ trợ
-Tầng 2: LƯU TRỮ (STORE)   ──> Các nút (nodes) + cạnh (edges) được lưu vào đồ thị SQLite
-Tầng 3: DÒ VẾT (TRACE)    ──> Thuật toán BFS tính toán vùng ảnh hưởng (blast radius)
-Tầng 4: CUNG CẤP (SERVE)  ──> Giao thức MCP cung cấp dữ liệu đồ thị cho trợ lý AI
+Layer 1: PARSE  ──> Tree-sitter builds AST tree from 19 supported languages
+Layer 2: STORE  ──> Nodes + edges are stored in SQLite graph
+Layer 3: TRACE  ──> BFS algorithm calculates the blast radius of changes
+Layer 4: SERVE  ──> MCP protocol provides graph data to the AI assistant
 ```
 
-### Đồ thị chứa những thông tin gì?
-- **Các Nút (Nodes):** File, hàm (functions), phương thức (methods), lớp (classes), lệnh import, các file kiểm thử (tests).
-- **Các Cạnh (Edges):** Mô tả quan hệ như "A gọi B", "X import Y", "Test Z kiểm thử cho Hàm W", "Lớp A kế thừa Lớp B".
-- **Siêu dữ liệu (Metadata):** Tên, kiểu dữ liệu, đường dẫn file, phạm vi dòng code của từng nút.
-- **Tính riêng tư (Privacy):** Chỉ lưu trữ siêu dữ liệu cấu trúc — **KHÔNG** lưu nội dung mã nguồn thực tế trong đồ thị.
+### What does the graph contain?
+- **Nodes:** Files, functions, methods, classes, import statements, test files.
+- **Edges:** Describes relationships such as "A calls B", "X imports Y", "Test Z tests Function W", "Class A inherits Class B".
+- **Metadata:** Name, data type, file path, line range of each node.
+- **Privacy:** Only stores structural metadata — **DO NOT** store actual source code content in the graph.
 
-### Danh sách 19 ngôn ngữ được hỗ trợ
+### List of 19 supported languages
 Python, TypeScript, JavaScript, Go, Rust, Java, C#, Ruby, Kotlin, Swift, PHP, C/C++, Vue SFC, Solidity, Dart, R, Perl, Lua, Jupyter/Databricks notebooks.
 
 ---
 
-## Cài đặt & Cấu hình
+## Installation & Configuration
 
-### Yêu cầu hệ thống
+### System Requirements
 - Python 3.9+ (`python3 --version`)
-- Đã cài đặt `pip` hoặc `pipx`
-- Trình khách AI hỗ trợ MCP (AG Kit, Claude Code, Cursor, Windsurf, Zed)
-- Codebase được quản lý bằng Git (để hỗ trợ cập nhật gia tăng - incremental updates)
+- `pip` or `pipx` installed
+- MCP-compatible AI client (AG Kit, Claude Code, Cursor, Windsurf, Zed)
+- Codebase managed by Git (to support incremental updates)
 
-### Bước 1: Cài đặt Gói phần mềm
+### Step 1: Install Package
 ```bash
-# Khuyến nghị: Cài đặt trong môi trường cô lập bằng pipx
+# Recommended: Install in an isolated environment using pipx
 pipx install code-review-graph
 
-# Cách khác: Cài đặt và chạy nhanh bằng uv (không cài vĩnh viễn)
+# Alternative: Run quickly using uv (without permanent installation)
 uvx code-review-graph install
 
-# Cách khác: Cài đặt toàn cục qua pip
+# Alternative: Install globally via pip
 pip install code-review-graph
 ```
 
-### Bước 2: Cấu hình MCP Client
-Cấu hình máy chủ MCP bằng cách chạy lệnh tự động phát hiện và đăng ký vào client:
+### Step 2: Configure MCP Client
+Configure the MCP server by running auto-detection and registering it to the client:
 ```bash
-# Tự động phát hiện và cấu hình cho các công cụ được hỗ trợ trên hệ thống
+# Auto-detect and configure for supported tools on the system
 code-review-graph install
 
-# Hoặc chỉ định cụ thể cho một nền tảng client
+# Or specify a platform client
 code-review-graph install --platform cursor
 code-review-graph install --platform claude
 code-review-graph install --platform zed
 ```
 
-Nếu cấu hình thủ công, bạn thêm cấu hình sau vào file cấu hình MCP của client (ví dụ `mcp.json` hoặc `cursor-settings.json`):
+If configuring manually, add the following to your client's MCP configuration file (e.g. `mcp.json` or `cursor-settings.json`):
 ```json
 {
   "mcpServers": {
@@ -122,25 +122,25 @@ Nếu cấu hình thủ công, bạn thêm cấu hình sau vào file cấu hình
 
 ---
 
-## Hướng dẫn Sử Dụng & Vận Hành
+## Usage & Operation Guidelines
 
-### 1. Khởi tạo đồ thị lần đầu
-Di chuyển vào thư mục dự án và chạy lệnh sau để quét và dựng đồ thị:
+### 1. Initialize Graph for the First Time
+Navigate to the project directory and run the following command to scan and build the graph:
 ```bash
 code-review-graph build
 ```
-Lệnh này sẽ tạo ra thư mục `.code-review-graph/` chứa file cơ sở dữ liệu `graph.db` cục bộ.
+This command will create a local `.code-review-graph/` directory containing the `graph.db` database file.
 
-### 2. Cập nhật đồ thị khi code thay đổi
-Đồ thị hỗ trợ cập nhật gia tăng siêu nhanh bằng cách chỉ phân tích các file có thay đổi so với Git:
+### 2. Update Graph when Code Changes
+The graph supports super fast incremental updates by only analyzing files that have changed compared to Git:
 ```bash
 code-review-graph update
 ```
-*Khuyến nghị:* Thêm lệnh này vào Git hook `post-commit` của dự án để đồ thị luôn được đồng bộ tự động.
+*Recommendation:* Add this command to the project's Git `post-commit` hook so the graph is always synchronized automatically.
 
-### 3. Các Công Cụ MCP được cung cấp cho AI
-Sau khi cài đặt thành công, máy chủ MCP sẽ cung cấp cho trợ lý AI các công cụ sau:
-*   `get_blast_radius(files: string[])`: Tính toán và trả về danh sách các file/hàm liên đới bị ảnh hưởng trực tiếp và gián tiếp bởi danh sách file đầu vào.
-*   `find_dependents(file: string)`: Tìm các file đang import hoặc phụ thuộc vào file hiện tại.
-*   `get_call_graph(function_name: string)`: Trả về cây gọi hàm (call graph) của hàm được chỉ định.
-*   `show_architecture_summary()`: Trực quan hóa cấu trúc thư mục và các mối quan hệ module chính trong hệ thống.
+### 3. MCP Tools Provided to AI
+After successful installation, the MCP server will provide the AI assistant with the following tools:
+*   `get_blast_radius(files: string[])`: Calculates and returns a list of files/functions directly and indirectly affected by the input file list.
+*   `find_dependents(file: string)`: Finds files that import or depend on the current file.
+*   `get_call_graph(function_name: string)`: Returns the call graph of the specified function.
+*   `show_architecture_summary()`: Visualizes the directory structure and main module relationships in the system.

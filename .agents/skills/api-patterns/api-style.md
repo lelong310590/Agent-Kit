@@ -1,33 +1,33 @@
-# Lựa Chọn Phong Cách Thiết Kế API
+# Choosing API Design Style
 
-> REST vs GraphQL vs tRPC - chọn cái nào, khi nào?
+> REST vs GraphQL vs tRPC - which one to choose, and when?
 
-## Sơ Đồ Quyết Định
+## Decision Tree
 
 ```
-Ai là người tiêu dùng API?
+Who is the API consumer?
 │
-├── Public API / Đa nền tảng
-│   └── REST + OpenAPI (độ tương thích rộng nhất)
+├── Public API / Multi-platform
+│   └── REST + OpenAPI (broadest compatibility)
 │
-├── Nhu cầu dữ liệu phức tạp / Nhiều frontend
-│   └── GraphQL (truy vấn linh hoạt)
+├── Complex data needs / Multiple frontends
+│   └── GraphQL (flexible querying)
 │
-├── Frontend + backend đều dùng TypeScript (monorepo)
-│   └── tRPC (an toàn kiểu dữ liệu end-to-end)
+├── Both frontend + backend use TypeScript (monorepo)
+│   └── tRPC (end-to-end type safety)
 │
-├── Thời gian thực (Real-time) / Hướng sự kiện (Event-driven)
+├── Real-time / Event-driven
 │   └── WebSocket + AsyncAPI
 │
-└── Microservices nội bộ
-    └── gRPC (hiệu năng cao) hoặc REST (đơn giản)
+└── Internal Microservices
+    └── gRPC (high performance) or REST (simple)
 ```
 
-## So Sánh
+## Comparison
 
-| Yếu tố | REST | GraphQL | tRPC |
+| Factor | REST | GraphQL | tRPC |
 |--------|------|---------|------|
-| **An toàn kiểu dữ liệu (Type Safety)** | Thủ công / OpenAPI | Tạo tự động từ Schema | End-to-end (TS) |
-| **Lấy thừa dữ liệu (Over-fetching)** | Phổ biến | Tối thiểu hóa | Tối thiểu hóa |
-| **Bộ nhớ đệm (Caching)** | Tuyệt vời (HTTP) | Phức tạp | Khó hơn |
-| **Độ dốc học tập (Learning Curve)** | Thấp | Cao | Thấp (với lập trình viên TS) |
+| **Type Safety** | Manual / OpenAPI | Generated from Schema | End-to-end (TS) |
+| **Over-fetching** | Common | Minimized | Minimized |
+| **Caching** | Excellent (HTTP) | Complex | Harder |
+| **Learning Curve** | Low | High | Low (for TS developers) |

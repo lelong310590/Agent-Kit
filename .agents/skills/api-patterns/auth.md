@@ -1,23 +1,23 @@
-# Các Mẫu Thiết Kế Xác Thực (Authentication Patterns)
+# Authentication Patterns
 
-> Chọn cơ chế xác thực dựa trên từng trường hợp sử dụng.
+> Choose authentication mechanisms based on each use case.
 
-## Hướng Dẫn Lựa Chọn
+## Selection Guide
 
-| Cơ chế | Phù hợp nhất cho |
+| Mechanism | Best Suited For |
 |---------|----------|
-| **JWT** | Không lưu trạng thái (Stateless), microservices |
-| **Session** | Web truyền thống, ứng dụng đơn giản |
-| **OAuth 2.0** | Tích hợp bên thứ ba |
-| **API Keys** | Giao tiếp server-to-server, API công khai |
-| **Passkey** | Đăng nhập không mật khẩu hiện đại (2025+) |
+| **JWT** | Stateless, microservices |
+| **Session** | Traditional web, simple applications |
+| **OAuth 2.0** | Third-party integration |
+| **API Keys** | Server-to-server communication, public APIs |
+| **Passkey** | Modern passwordless login (2025+) |
 
-## Nguyên Tắc Sử Dụng JWT
+## JWT Usage Principles
 
 ```
-Triển khai:
-├── Giữ thời gian sống của token ngắn (ví dụ: 15 phút)
-├── Sử dụng refresh token được lưu trữ an toàn trong HTTP-only cookie
-├── Xác thực chữ ký trên mỗi request
-└── Không lưu trữ thông tin nhạy cảm trong payload (JWT chỉ được mã hóa base64)
+Implementation:
+├── Keep token lifespan short (e.g., 15 minutes)
+├── Use refresh tokens stored securely in HTTP-only cookies
+├── Verify signatures on every request
+└── Do not store sensitive information in the payload (JWT is only base64 encoded)
 ```

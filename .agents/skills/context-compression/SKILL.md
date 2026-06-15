@@ -1,72 +1,72 @@
 ---
 name: context-compression
-description: Quản lý và nén ngữ cảnh hội thoại trong các phiên làm việc dài. Phát hiện khi ngữ cảnh phình to, tóm tắt các giai đoạn công việc đã hoàn thành, lưu trữ các phát hiện cũ trong khi vẫn bảo toàn các quyết định quan trọng. Giúp ngăn chặn sự suy giảm ngữ cảnh.
-when_to_use: "Khi một phiên làm việc có hơn 20 lượt tương tác, khi ngữ cảnh có cảm giác bị lặp lại, khi agent mất dấu các công việc trước đó, hoặc khi người dùng yêu cầu 'tóm tắt những gì chúng ta đã làm'. KHÔNG dùng cho các phiên làm việc ngắn."
+description: Manage and compress conversation context in long sessions. Detects context bloat, summarizes completed work phases, and stores old findings while preserving critical decisions. Helps prevent context decay.
+when_to_use: "When a session exceeds 20 turns, when context feels repetitive, when the agent loses track of prior work, or when the user asks to 'summarize what we've done'. DO NOT use for short sessions."
 allowed-tools: Read, Write, Grep
 effort: low
 ---
 
-# Nén Ngữ Cảnh — Quản Lý Phiên Làm Việc Dài
+# Context Compression — Managing Long Sessions
 
-> Giữ cho các phiên làm việc luôn hiệu quả bằng cách nén các phần công việc đã hoàn thành nhưng vẫn bảo toàn các quyết định quan trọng.
+> Keep sessions efficient by compressing completed phases of work while preserving critical decisions.
 
-## Tổng quan
+## Overview
 
-Các phiên làm việc dài (hơn 30 lượt tương tác) sẽ gây ra sự suy giảm ngữ cảnh — AI bị mất dấu các công việc trước đó, lặp lại chính mình hoặc quên đi các quyết định. Nén ngữ cảnh sẽ chủ động tóm tắt các giai đoạn đã hoàn thành để cửa sổ ngữ cảnh luôn tập trung vào công việc hiện tại.
+Long sessions (more than 30 turns) cause context decay — the AI loses track of prior work, repeats itself, or forgets decisions. Context compression proactively summarizes completed phases so that the context window remains focused on the current task.
 
-**Ảnh hưởng Token:** Thu hồi từ 5.000 - 15.000 token trong các phiên làm việc dài bằng cách thay thế các đầu ra công cụ dài dòng bằng các bản tóm tắt ngữ nghĩa.
+**Token Impact:** Recovers 5,000 - 15,000 tokens in long sessions by replacing verbose tool outputs with semantic summaries.
 
 ---
 
-## Khi Nào Cần Nén
+## When to Compress
 
-| Tín hiệu | Hành động |
+| Signal | Action |
 |---|---|
-| Phiên làm việc có hơn 20 lượt tương tác | Cân nhắc chủ động nén |
-| Agent lặp lại các gợi ý trước đó | Ngữ cảnh đã bão hòa — nén ngay lập tức |
-| Người dùng nói "chúng ta đã thảo luận vấn đề này rồi" | Nén ngay lập tức |
-| Chuyển sang một giai đoạn công việc mới | Nén giai đoạn công việc đã hoàn thành |
-| Đầu ra công cụ lớn (hơn 500 dòng) | Vi-nén (micro-compact) đầu ra đó |
+| Session has more than 20 turns | Consider proactive compression |
+| Agent repeats previous suggestions | Context is saturated — compress immediately |
+| User says "we already discussed this" | Compress immediately |
+| Transitioning to a new work phase | Compress the completed work phase |
+| Large tool output (more than 500 lines) | Micro-compact that output |
 
 ---
 
-## Các Cấp Độ Nén
+## Compression Levels
 
-### Cấp độ 1: Vi-Nén (Micro-Compact - Đầu Ra Công Cụ)
+### Level 1: Micro-Compact (Tool Output)
 
-Nén các đầu ra công cụ riêng lẻ trong khi vẫn giữ lại nội dung ngữ nghĩa:
+Compress individual tool outputs while retaining semantic content:
 
 ```
-❌ Trước (đầu ra grep thô — 200 dòng, ~4.000 tokens):
+❌ Before (raw grep output — 200 lines, ~4,000 tokens):
 src/auth/jwt.ts:15: import { verify } from 'jsonwebtoken'
 src/auth/jwt.ts:23: export function validateToken(token: string) {
 src/auth/jwt.ts:24:   try {
 src/auth/jwt.ts:25:     const decoded = verify(token, SECRET)
-... (195 dòng khác)
+... (195 other lines)
 
-✅ Sau (vi-nén — 5 dòng, ~100 tokens):
-Kết quả grep cho "jwt": Tìm thấy 8 file, 42 kết quả trùng khớp.
-Các file quan trọng: src/auth/jwt.ts (logic JWT chính), src/middleware/auth.ts (middleware),
-src/api/login.ts (tạo token). Xác thực token tại jwt.ts:23-40.
-Xử lý lỗi tại jwt.ts:42-55. Secret được nạp từ env tại jwt.ts:8.
+✅ After (micro-compacted — 5 lines, ~100 tokens):
+Grep results for "jwt": Found 8 files, 42 matches.
+Key files: src/auth/jwt.ts (main JWT logic), src/middleware/auth.ts (middleware),
+src/api/login.ts (token generation). Token validation at jwt.ts:23-40.
+Error handling at jwt.ts:42-55. Secret loaded from env at jwt.ts:8.
 ```
 
-### Cấp độ 2: Tóm Tắt Giai Đoạn (Phase Summary)
+### Level 2: Phase Summary
 
-Thay thế một giai đoạn công việc đã hoàn thành bằng một bản tóm tắt:
+Replace a completed work phase with a summary:
 
 ```
-❌ Trước (toàn bộ lịch sử nghiên cứu — ~3.000 tokens):
-[logs dài dòng, nhiều lần thử thất bại, thảo luận dài về việc lựa chọn framework...]
+❌ Before (full research history — ~3.000 tokens):
+[verbose logs, failed attempts, long discussion about framework choices...]
 
-✅ Sau (tóm tắt giai đoạn — ~150 tokens):
-Giai đoạn 1: Đã hoàn thành việc lựa chọn công nghệ. Quyết định sử dụng Laravel Filament thay vì các Livewire component tự dựng cho trang quản trị vì có sẵn trình dựng bảng (table builder). Các package chính đã cài đặt: filament/filament v3.2.
+✅ After (phase summary — ~150 tokens):
+Phase 1: Technology selection completed. Decided to use Laravel Filament instead of custom Livewire components for the admin panel because of the built-in table builder. Main packages installed: filament/filament v3.2.
 ```
 
-### Cấp độ 3: Tích Hợp Bộ Nhớ (Lưu Trữ - Memory Integration)
+### Level 3: Memory Integration (Archival)
 
-Lưu trữ các bài học kinh nghiệm, quyết định hoặc cài đặt quan trọng vào hệ thống bộ nhớ:
-- Xác định các quy ước khả thi và ghi chúng vào [.agents/memory/project-conventions.md](file:///d:/work/ag-tool-kit/.agents/memory/project-conventions.md).
-- Xác định các lựa chọn kiến trúc chính và ghi chúng vào [.agents/memory/architectural-decisions.md](file:///d:/work/ag-tool-kit/.agents/memory/architectural-decisions.md).
-- Xóa ngữ cảnh cuộc hội thoại dài hiện tại bằng cách bắt đầu một phiên làm việc mới sau khi bộ nhớ được tích hợp thành công.
+Save key lessons, decisions, or settings to the memory system:
+- Identify actionable conventions and write them to [.agents/memory/project-conventions.md](file:///d:/work/ag-tool-kit/.agents/memory/project-conventions.md).
+- Identify key architectural choices and write them to [.agents/memory/architectural-decisions.md](file:///d:/work/ag-tool-kit/.agents/memory/architectural-decisions.md).
+- Clear the current long conversation context by starting a new session after memory is successfully integrated.
 ```

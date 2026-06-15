@@ -1,30 +1,30 @@
 ---
 name: api-patterns
-description: Các nguyên lý thiết kế API và ra quyết định. Lựa chọn giữa REST vs GraphQL vs tRPC, định dạng phản hồi, quản lý phiên bản và phân trang.
-when_to_use: "Khi thiết kế API REST/GraphQL/tRPC, định nghĩa định dạng phản hồi, quản lý phiên bản, phân trang hoặc xác thực API. KHÔNG dùng cho công việc UI/frontend."
+description: API design principles and decision making. Choosing between REST vs GraphQL vs tRPC, response formatting, versioning, and pagination.
+when_to_use: "When designing REST/GraphQL/tRPC APIs, defining response formats, versioning, pagination, or API authentication. DO NOT use for UI/frontend work."
 allowed-tools: Read, Write, Edit, Glob, Grep
 ---
 
-# Các Mẫu Thiết Kế API (API Patterns)
+# API Design Patterns (API Patterns)
 
-> Các nguyên lý thiết kế API và ra quyết định.
-> **Hãy học cách TƯ DUY, không sao chép máy móc các khuôn mẫu có sẵn.**
+> API design principles and decision making.
+> **Learn to THINK, do not copy patterns blindly.**
 
-## 🎯 Quy Tắc Đọc Có Chọn Lọc
+## 🎯 Selective Reading Rule
 
-**Chỉ đọc các file liên quan đến yêu cầu!** Hãy kiểm tra sơ đồ nội dung và tìm những gì bạn cần.
+**Only read files relevant to the request!** Check the content map and find what you need.
 
 ---
 
-## 📑 Sơ Đồ Nội Dung
+## 📑 Content Map
 
-| File | Mô tả | Khi nào cần đọc |
+| File | Description | When to read |
 |------|-------------|--------------|
-| `api-style.md` | Sơ đồ quyết định giữa REST vs GraphQL vs tRPC | Khi lựa chọn loại API |
-| `rest.md` | Đặt tên tài nguyên, phương thức HTTP, mã trạng thái | Khi thiết kế REST API |
-| `response.md` | Mô hình bao bọc (envelope pattern), định dạng lỗi, phân trang | Cấu trúc phản hồi API |
-| `graphql.md` | Thiết kế schema, khi nào nên dùng, bảo mật | Khi cân nhắc sử dụng GraphQL |
-| `trpc.md` | TypeScript monorepo, an toàn kiểu dữ liệu (type safety) | Dự án fullstack TypeScript |
-| `versioning.md` | Quản lý phiên bản qua URI/Header/Query | Lập kế hoạch phát triển API |
-| `auth.md` | JWT, OAuth, Passkey, API Keys | Lựa chọn cơ chế xác thực |
-| `rate-limiting.md` | Token bucket, sliding window | Triển khai bảo vệ API |
+| `api-style.md` | Decision matrix between REST vs GraphQL vs tRPC | When choosing API type |
+| `rest.md` | Resource naming, HTTP methods, status codes | When designing REST API |
+| `response.md` | Envelope pattern, error format, pagination | API response structure |
+| `graphql.md` | Schema design, when to use, security | When considering GraphQL |
+| `trpc.md` | TypeScript monorepo, type safety | Fullstack TypeScript projects |
+| `versioning.md` | Versioning via URI/Header/Query | API evolution planning |
+| `auth.md` | JWT, OAuth, Passkey, API Keys | Choosing authentication mechanism |
+| `rate-limiting.md` | Token bucket, sliding window | Implementing API protection |

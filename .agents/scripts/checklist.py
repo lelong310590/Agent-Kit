@@ -1,6 +1,12 @@
 import os
 import re
 import sys
+import io
+
+# Force UTF-8 stdout on Windows to prevent UnicodeEncodeError when printing emojis
+if sys.platform.startswith('win'):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 
 # Regex to detect common API keys / secrets / credentials
 SECRET_PATTERNS = [

@@ -1,28 +1,28 @@
 ---
 name: goravel-expert
-description: Chuyên gia phát triển ứng dụng Go sử dụng Goravel Framework. Tối ưu hóa kiến trúc Service Container, Service Provider, ORM (GORM), Router và Middleware.
-when_to_use: "Dự án phát hiện có file go.mod chứa 'github.com/goravel/framework' hoặc mã nguồn import package 'github.com/goravel/framework'"
+description: Expert in Go application development using the Goravel Framework. Optimizes the architecture of Service Containers, Service Providers, ORM (GORM), Routers, and Middleware.
+when_to_use: "Projects with a go.mod file containing 'github.com/goravel/framework' or source code importing the 'github.com/goravel/framework' package."
 ---
 
-# Kỹ Năng: Goravel Expert
+# Skill: Goravel Expert
 
-Chỉ dẫn chuyên sâu này được tự động nạp khi phát hiện dự án sử dụng Goravel Framework (Framework web Go lấy cảm hứng từ Laravel).
+This detailed guidance is automatically loaded when the project is detected to be using the Goravel Framework (a Go web framework inspired by Laravel).
 
 ---
 
-## 🏗️ 1. Cấu Trúc MVC & Service Provider
+## 🏗️ 1. MVC Structure & Service Providers
 
-*   **Service Container**: Hiểu cách đăng ký và giải quyết (resolve) các dependency thông qua Service Provider. Sử dụng `facades` để gọi các dịch vụ cốt lõi (như `facades.Orm()`, `facades.Config()`, `facades.Log()`).
-*   **Tổ Chức Routing & Controller**:
-    *   Khai báo Route trong `routes/web.go` hoặc `routes/api.go`.
-    *   Controller chỉ nhận request thông qua `http.Context`, gọi service xử lý và trả về phản hồi qua `ctx.Response()`.
+*   **Service Container**: Understand how to register and resolve dependencies via Service Providers. Use `facades` to call core services (such as `facades.Orm()`, `facades.Config()`, `facades.Log()`).
+*   **Routing & Controller Organization**:
+    *   Declare routes in `routes/web.go` or `routes/api.go`.
+    *   Controllers should only receive requests via `http.Context`, invoke services to process logic, and return responses via `ctx.Response()`.
 
 ---
 
 ## 💾 2. ORM (Database) & Migrations
 
-*   **Goravel ORM**: Sử dụng `facades.Orm().Query()` để thực hiện các câu lệnh database.
-*   **Model Definition**: Định nghĩa model kế thừa struct `orm.Model` để có sẵn các trường `ID`, `CreatedAt`, `UpdatedAt`, `DeletedAt`:
+*   **Goravel ORM**: Use `facades.Orm().Query()` to execute database queries.
+*   **Model Definition**: Define models that embed the `orm.Model` struct to inherit fields like `ID`, `CreatedAt`, `UpdatedAt`, and `DeletedAt`:
     ```go
     type User struct {
         orm.Model
@@ -30,18 +30,18 @@ Chỉ dẫn chuyên sâu này được tự động nạp khi phát hiện dự 
         Email string
     }
     ```
-*   **Migrations**: Luôn tạo và chạy database migration bằng CLI `go run . artisan make:migration [name]` thay vì sửa database trực tiếp.
+*   **Migrations**: Always create and run database migrations using the Artisan CLI: `go run . artisan make:migration [name]` instead of modifying the database directly.
 
 ---
 
 ## 🛡️ 3. Request Validation & Middleware
 
-*   **Http Validation**: Sử dụng Validator của Goravel để kiểm tra payload request. Định nghĩa struct validation tags:
+*   **Http Validation**: Use Goravel's Validator to validate request payloads. Define structs with validation tags:
     ```go
     type RegisterRequest struct {
         Name  string `form:"name" json:"name" binding:"required"`
         Email string `form:"email" json:"email" binding:"required,email"`
     }
     ```
-*   **Middleware**: Viết custom middleware để xử lý phân quyền, CORS, hoặc ghi log tùy biến cho từng nhóm route.
-*   **Artisan Commands**: Sử dụng các lệnh Artisan tích hợp (`artisan make:controller`, `artisan make:model`) để khởi tạo các file mẫu nhanh chóng, đúng quy chuẩn.
+*   **Middleware**: Write custom middleware to handle authorization, CORS, or custom logging for specific route groups.
+*   **Artisan Commands**: Use built-in Artisan commands (`artisan make:controller`, `artisan make:model`) to generate template files quickly and in compliance with standards.

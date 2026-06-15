@@ -3,18 +3,123 @@ import { Command } from 'commander';
 import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
+import * as https from 'https';
 
 const program = new Command();
 
 program
   .name('longln-ag-kit')
-  .description('Local CLI tool to initialize AG Tool Kit configurations')
-  .version('1.0.0');
+  .description('Local CLI tool to initialize and manage AG Tool Kit configurations')
+  .version('1.2.0');
+
+// Helper to parse YAML frontmatter from markdown content
+function parseFrontmatter(content: string): { [key: string]: string } {
+  const result: { [key: string]: string } = {};
+  const match = content.match(/^---\r?\n([\s\S]*?)\r?\n---/);
+  if (match) {
+    const lines = match[1].split('\n');
+    for (const line of lines) {
+      const idx = line.indexOf(':');
+      if (idx !== -1) {
+        const key = line.slice(0, idx).trim();
+        const val = line.slice(idx + 1).trim();
+        result[key] = val.replace(/^["']|["']$/g, '');
+      }
+    }
+  }
+  return result;
+}
+
+// Helper to download a single file from GitHub
+function downloadFileFromGitHub(skillName: string, fileName: string): Promise<string> {
+  const url = `https://raw.githubusercontent.com/longlengoc90/ag-tool-kit/main/.agents/skills/${skillName}/${fileName}`;
+  return new Promise((resolve, reject) => {
+    https.get(url, (res) => {
+      if (res.statusCode === 404) {
+        reject(new Error(`File "${fileName}" not found in skill "${skillName}" on remote repository.`));
+        return;
+      }
+      if (res.statusCode !== 200) {
+        reject(new Error(`Failed to download "${fileName}". Status code: ${res.statusCode}`));
+        return;
+      }
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => resolve(data));
+    }).on('error', (err) => {
+      reject(err);
+    });
+  });
+}
+
+// Helper to install Git hooks
+async function installGitHooks(cwd: string) {
+  const gitDir = path.join(cwd, '.git');
+  if (!await fs.pathExists(gitDir)) {
+    console.log('ℹ️ Git repository not found. Skipping Git Hooks installation.');
+    return;
+  }
+  const hooksDir = path.join(gitDir, 'hooks');
+  await fs.ensureDir(hooksDir);
+
+  const preCommitPath = path.join(hooksDir, 'pre-commit');
+  const prePushPath = path.join(hooksDir, 'pre-push');
+
+  const preCommitContent = `#!/bin/sh
+# AG Tool Kit: Auto-run checklist validation
+if [ -f .agents/scripts/checklist.py ]; then
+  echo "🚀 Running AG Tool Kit checklist validation..."
+  python .agents/scripts/checklist.py
+  if [ $? -ne 0 ]; then
+    echo "❌ AG Tool Kit checklist failed. Commit aborted."
+    exit 1
+  fi
+fi
+`;
+
+  const prePushContent = `#!/bin/sh
+# AG Tool Kit: Auto-run full verification tests
+if [ -f .agents/scripts/verify_all.py ]; then
+  echo "🚀 Running AG Tool Kit full verification tests..."
+  python .agents/scripts/verify_all.py
+  if [ $? -ne 0 ]; then
+    echo "❌ AG Tool Kit verification failed. Push aborted."
+    exit 1
+  fi
+fi
+`;
+
+  await fs.writeFile(preCommitPath, preCommitContent, { mode: 0o755 });
+  await fs.writeFile(prePushPath, prePushContent, { mode: 0o755 });
+  console.log('✅ Git Hooks (pre-commit, pre-push) installed successfully.');
+}
+
+// Helper to auto-fix Git exclude
+async function fixGitExclude(cwd: string) {
+  const gitDir = path.join(cwd, '.git');
+  if (!await fs.pathExists(gitDir)) return;
+
+  const excludePath = path.join(gitDir, 'info', 'exclude');
+  await fs.ensureDir(path.dirname(excludePath));
+
+  if (await fs.pathExists(excludePath)) {
+    let content = await fs.readFile(excludePath, 'utf8');
+    if (!content.includes('.agents/')) {
+      content = content.trimEnd() + '\n.agents/\n';
+      await fs.writeFile(excludePath, content);
+      console.log('🛠 Auto-fixed: Added `.agents/` to `.git/info/exclude`.');
+    }
+  } else {
+    await fs.writeFile(excludePath, '\n.agents/\n');
+    console.log('🛠 Auto-fixed: Created `.git/info/exclude` and added `.agents/`.');
+  }
+}
 
 program
   .command('init')
   .description('Initialize `.agents/` configuration directory in the current working directory')
   .option('-l, --link', 'Link to a centralized global `.agents` setup instead of copying')
+  .option('--no-hooks', 'Do not install Git hooks')
   .action(async (options) => {
     const cwd = process.cwd();
     const targetPath = path.join(cwd, '.agents');
@@ -61,12 +166,448 @@ program
       try {
         await fs.copy(sourceTemplate, targetPath);
         console.log('✅ AG Tool Kit `.agents/` initialized successfully in this project.');
-        console.log('\n💡 Recommendation: Add `.agents/` to `.git/info/exclude` instead of `.gitignore` to keep AI autocomplete features working!');
       } catch (copyErr: any) {
         console.error('❌ Error copying `.agents` configuration folder:', copyErr.message);
         process.exit(1);
       }
     }
+
+    // Install Git Hooks unless --no-hooks is specified
+    if (options.hooks) {
+      await installGitHooks(cwd);
+    }
+
+    // Auto fix Git exclude
+    await fixGitExclude(cwd);
+    console.log('\n💡 Recommendation: Keep `.agents/` in `.git/info/exclude` to ensure AI autocomplete works!');
+  });
+
+program
+  .command('sync')
+  .description('Sync `.agents/` configuration with the latest templates (preserves your memory/)')
+  .action(async () => {
+    const cwd = process.cwd();
+    const targetPath = path.join(cwd, '.agents');
+
+    if (!await fs.pathExists(targetPath)) {
+      console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+
+    // Check if it's a symlink/junction
+    const lstat = await fs.lstat(targetPath);
+    if (lstat.isSymbolicLink()) {
+      console.log('ℹ️ Directory `.agents` is a symbolic link. It stays in sync with global template automatically.');
+      return;
+    }
+
+    const sourceTemplate = path.resolve(__dirname, '../templates');
+    console.log('🔄 Syncing .agents directory...');
+
+    try {
+      const items = await fs.readdir(sourceTemplate);
+      for (const item of items) {
+        if (item === 'memory') {
+          // Skip copying memory directory to preserve local knowledge.
+          const localMemoryPath = path.join(targetPath, 'memory');
+          if (!await fs.pathExists(localMemoryPath)) {
+            await fs.copy(path.join(sourceTemplate, 'memory'), localMemoryPath);
+            console.log('📦 Restored missing memory folder.');
+          } else {
+            console.log('🧠 Preserved existing memory folder.');
+          }
+          continue;
+        }
+        await fs.copy(path.join(sourceTemplate, item), path.join(targetPath, item), { overwrite: true });
+      }
+      console.log('✅ AG Tool Kit `.agents/` synchronized successfully.');
+    } catch (err: any) {
+      console.error('❌ Sync failed:', err.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('add-skill <skill>')
+  .description('Add a specific skill from local templates or download from remote GitHub repository')
+  .action(async (skillName) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+
+    if (!await fs.pathExists(targetAgentsPath)) {
+      console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+
+    const sourceTemplate = path.resolve(__dirname, '../templates');
+    const skillSourcePath = path.join(sourceTemplate, 'skills', skillName);
+    const skillTargetPath = path.join(targetAgentsPath, 'skills', skillName);
+
+    if (await fs.pathExists(skillTargetPath)) {
+      console.log(`ℹ️ Skill "${skillName}" is already installed in this project.`);
+      return;
+    }
+
+    // 1. Try local copy
+    if (await fs.pathExists(skillSourcePath)) {
+      try {
+        await fs.copy(skillSourcePath, skillTargetPath);
+        console.log(`✅ Skill "${skillName}" added from local templates successfully.`);
+        return;
+      } catch (err: any) {
+        console.error('❌ Failed to copy local skill:', err.message);
+        process.exit(1);
+      }
+    }
+
+    // 2. Local fallback failed, attempt Cloud Fetch
+    console.log(`🌐 Skill "${skillName}" not found locally. Trying to download from remote GitHub repository...`);
+    try {
+      // Create destination skill folder
+      await fs.ensureDir(skillTargetPath);
+
+      // Download main SKILL.md
+      console.log(`📥 Downloading SKILL.md...`);
+      const skillMdContent = await downloadFileFromGitHub(skillName, 'SKILL.md');
+      await fs.writeFile(path.join(skillTargetPath, 'SKILL.md'), skillMdContent);
+
+      // Parse SKILL.md for referenced sub-markdown files in code blocks or lists (e.g., `rest.md`)
+      const matches = [...skillMdContent.matchAll(/`([^`]+\.md)`/g)];
+      const subFiles = Array.from(new Set(matches.map(m => m[1]))).filter(f => f !== 'SKILL.md');
+
+      if (subFiles.length > 0) {
+        console.log(`📥 Detected ${subFiles.length} sub-documents referenced. Fetching...`);
+        for (const file of subFiles) {
+          console.log(`   - Downloading ${file}...`);
+          try {
+            const fileContent = await downloadFileFromGitHub(skillName, file);
+            await fs.writeFile(path.join(skillTargetPath, file), fileContent);
+          } catch (dlErr: any) {
+            console.warn(`   ⚠️ Warning: Could not download sub-document "${file}": ${dlErr.message}`);
+          }
+        }
+      }
+
+      console.log(`✅ Skill "${skillName}" downloaded and installed successfully from remote GitHub.`);
+    } catch (err: any) {
+      console.error(`❌ Cloud Fetch failed: ${err.message}`);
+      // Cleanup directory on failure
+      try { await fs.remove(skillTargetPath); } catch (e) {}
+      process.exit(1);
+    }
+  });
+
+program
+  .command('list')
+  .description('List all available skills in the template pool and their installation status')
+  .action(async () => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const sourceTemplate = path.resolve(__dirname, '../templates');
+    const skillsTemplatePath = path.join(sourceTemplate, 'skills');
+
+    if (!await fs.pathExists(skillsTemplatePath)) {
+      console.error('❌ Error: Templates pool not found. Please check your CLI installation.');
+      process.exit(1);
+    }
+
+    try {
+      const skills = await fs.readdir(skillsTemplatePath);
+      console.log('--------------------------------------------------------------------------------');
+      console.log(`${'SKILL NAME'.padEnd(25)} ${'DESCRIPTION'.padEnd(40)} ${'STATUS'}`);
+      console.log('--------------------------------------------------------------------------------');
+
+      for (const skill of skills) {
+        const skillPath = path.join(skillsTemplatePath, skill);
+        const skillMd = path.join(skillPath, 'SKILL.md');
+        let desc = 'No description';
+
+        if (await fs.pathExists(skillMd)) {
+          const content = await fs.readFile(skillMd, 'utf-8');
+          const frontmatter = parseFrontmatter(content);
+          if (frontmatter.description) {
+            desc = frontmatter.description;
+          }
+        }
+
+        if (desc.length > 37) {
+          desc = desc.substring(0, 34) + '...';
+        }
+
+        const localSkillPath = path.join(targetAgentsPath, 'skills', skill);
+        const isInstalled = await fs.pathExists(localSkillPath);
+        const status = isInstalled ? '✅ Installed' : '❌ Not Installed';
+
+        console.log(`${skill.padEnd(25)} ${desc.padEnd(40)} ${status}`);
+      }
+      console.log('--------------------------------------------------------------------------------');
+    } catch (err: any) {
+      console.error('❌ Error listing skills:', err.message);
+      process.exit(1);
+    }
+  });
+
+program
+  .command('create <type> <name>')
+  .description('Create a new configuration template (type: agent, skill, workflow)')
+  .action(async (type, name) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+
+    if (!await fs.pathExists(targetAgentsPath)) {
+      console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+
+    // Name validation
+    if (!/^[a-zA-Z0-9-]+$/.test(name)) {
+      console.error('❌ Error: Component name must only contain alphanumeric characters and hyphens.');
+      process.exit(1);
+    }
+
+    const nameClean = name.toLowerCase();
+
+    try {
+      if (type === 'agent') {
+        const filePath = path.join(targetAgentsPath, 'agent', `${nameClean}.md`);
+        if (await fs.pathExists(filePath)) {
+          console.error(`❌ Error: Agent "${nameClean}" already exists.`);
+          process.exit(1);
+        }
+        const template = `---
+name: ${nameClean}
+description: Specialist agent role description and triggers.
+tools: Read, Grep, Glob, Command, Write
+model: inherit
+skills: clean-code
+---
+
+# Agent Persona: ${name} ( Specialist )
+
+Explain the agent's core philosophy, responsibilities, and specific expertise here.
+`;
+        await fs.writeFile(filePath, template);
+        console.log(`✅ Created new Agent persona at: .agents/agent/${nameClean}.md`);
+      } 
+      else if (type === 'skill') {
+        const folderPath = path.join(targetAgentsPath, 'skills', nameClean);
+        const filePath = path.join(folderPath, 'SKILL.md');
+        if (await fs.pathExists(filePath)) {
+          console.error(`❌ Error: Skill "${nameClean}" already exists.`);
+          process.exit(1);
+        }
+        await fs.ensureDir(folderPath);
+        const template = `---
+name: ${nameClean}
+description: Summary of the technology skill capabilities.
+when_to_use: Describe the triggers (e.g. package.json, config files) when this skill should load.
+allowed-tools: Read, Write
+---
+
+# Skill: ${name}
+
+Write detailed code guidelines, library references, naming conventions, and best practices here.
+`;
+        await fs.writeFile(filePath, template);
+        console.log(`✅ Created new Skill structure at: .agents/skills/${nameClean}/SKILL.md`);
+      } 
+      else if (type === 'workflow') {
+        const filePath = path.join(targetAgentsPath, 'workflows', `${nameClean}.md`);
+        if (await fs.pathExists(filePath)) {
+          console.error(`❌ Error: Workflow "${nameClean}" already exists.`);
+          process.exit(1);
+        }
+        const template = `---
+description: Workflow command execution steps description.
+---
+
+# Workflow Command: /${nameClean}
+
+Define interactive steps, commands, and checklists for the developer and AI agent here.
+`;
+        await fs.writeFile(filePath, template);
+        console.log(`✅ Created new Workflow at: .agents/workflows/${nameClean}.md`);
+      } 
+      else {
+        console.error('❌ Error: Invalid type. Supported types are: agent, skill, workflow');
+        process.exit(1);
+      }
+    } catch (err: any) {
+      console.error(`❌ Failed to create component: ${err.message}`);
+      process.exit(1);
+    }
+  });
+
+// Setup memory command group
+const memoryCmd = program.command('memory').description('Manage project persistent memory');
+
+memoryCmd
+  .command('add <content>')
+  .description('Add a new learning or gotcha to project persistent memory')
+  .option('-g, --global', 'Save to global memory hub instead of current project local memory')
+  .action(async (content, options) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    
+    let memoryFilePath = '';
+    if (options.global) {
+      const globalDir = path.join(os.homedir(), '.ag-kit', 'memory');
+      await fs.ensureDir(globalDir);
+      memoryFilePath = path.join(globalDir, 'learnings-gotchas.md');
+    } else {
+      if (!await fs.pathExists(targetAgentsPath)) {
+        console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+        process.exit(1);
+      }
+      const memoryDir = path.join(targetAgentsPath, 'memory');
+      await fs.ensureDir(memoryDir);
+      memoryFilePath = path.join(memoryDir, 'learnings-gotchas.md');
+    }
+
+    try {
+      let fileContent = '';
+      if (await fs.pathExists(memoryFilePath)) {
+        fileContent = await fs.readFile(memoryFilePath, 'utf-8');
+      } else {
+        fileContent = `# Learnings & Gotchas\n\nThis file collects critical lessons, bugs resolved, and convention overrides.\n\n`;
+      }
+
+      const dateStr = new Date().toISOString().slice(0, 10);
+      fileContent = fileContent.trimEnd() + `\n- [${dateStr}] ${content}\n`;
+      await fs.writeFile(memoryFilePath, fileContent);
+      console.log(`✅ Successfully added knowledge to: ${options.global ? 'Global Memory Hub' : 'Project Local Memory'}`);
+    } catch (err: any) {
+      console.error('❌ Failed to add to memory:', err.message);
+      process.exit(1);
+    }
+  });
+
+memoryCmd
+  .command('search <query>')
+  .description('Query persistent memory files for key lessons or conventions')
+  .action(async (query) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const localMemoryDir = path.join(targetAgentsPath, 'memory');
+    const globalMemoryDir = path.join(os.homedir(), '.ag-kit', 'memory');
+
+    console.log(`🔍 Searching memory archives for "${query}"...\n`);
+    const searchFolder = async (dirPath: string, scopeName: string) => {
+      if (!await fs.pathExists(dirPath)) return;
+      const files = await fs.readdir(dirPath);
+      for (const file of files) {
+        if (!file.endsWith('.md')) continue;
+        const filePath = path.join(dirPath, file);
+        const content = await fs.readFile(filePath, 'utf-8');
+        const lines = content.split('\n');
+        
+        lines.forEach((line, idx) => {
+          if (line.toLowerCase().includes(query.toLowerCase())) {
+            console.log(`[${scopeName}] ${file}:${idx + 1} -> ${line.trim()}`);
+          }
+        });
+      }
+    };
+
+    await searchFolder(localMemoryDir, 'Project Local');
+    await searchFolder(globalMemoryDir, 'Global Hub');
+    console.log('\nSearch complete.');
+  });
+
+program
+  .command('doctor')
+  .description('Audit the health and configuration of AG Tool Kit in this project')
+  .option('-f, --fix', 'Auto-fix minor issues found (hooks and Git exclude)')
+  .action(async (options) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const gitPath = path.join(cwd, '.git');
+
+    console.log('🔍 Auditing AG Tool Kit environment...\n');
+
+    // 1. Check .agents directory
+    if (!await fs.pathExists(targetAgentsPath)) {
+      console.log('❌ Directory `.agents` is missing.');
+      console.log('👉 Fix: Run `longln-ag-kit init` to initialize the toolkit.');
+      process.exit(1);
+    } else {
+      const lstat = await fs.lstat(targetAgentsPath);
+      if (lstat.isSymbolicLink()) {
+        console.log('✅ Directory `.agents` is linked globally (Symbolic Link).');
+      } else {
+        console.log('✅ Directory `.agents` is copied locally.');
+      }
+    }
+
+    // 2. Check Git Repo
+    if (!await fs.pathExists(gitPath)) {
+      console.log('⚠️ Git repository not found. Git Hooks and Git exclude audit skipped.');
+    } else {
+      console.log('✅ Git repository detected.');
+
+      // 3. Check Git Hooks
+      const hooksPath = path.join(gitPath, 'hooks');
+      const preCommit = path.join(hooksPath, 'pre-commit');
+      const prePush = path.join(hooksPath, 'pre-push');
+
+      const hasPreCommit = await fs.pathExists(preCommit);
+      const hasPrePush = await fs.pathExists(prePush);
+
+      if (hasPreCommit && hasPrePush) {
+        console.log('✅ Git hooks (pre-commit, pre-push) are installed.');
+      } else {
+        console.log('⚠️ Git hooks are missing or incomplete.');
+        if (options.fix) {
+          await installGitHooks(cwd);
+        } else {
+          console.log('👉 Fix: Run `longln-ag-kit doctor --fix` to install them.');
+        }
+      }
+
+      // 4. Check Git info/exclude
+      const excludePath = path.join(gitPath, 'info', 'exclude');
+      let isExcluded = false;
+      if (await fs.pathExists(excludePath)) {
+        const excludeContent = await fs.readFile(excludePath, 'utf8');
+        if (excludeContent.includes('.agents/')) {
+          isExcluded = true;
+          console.log('✅ `.agents/` is excluded locally in Git (`.git/info/exclude`).');
+        }
+      }
+
+      if (!isExcluded) {
+        console.log('⚠️ `.agents/` is NOT excluded in `.git/info/exclude`. It might be tracked by Git.');
+        if (options.fix) {
+          await fixGitExclude(cwd);
+        } else {
+          console.log('👉 Fix: Run `longln-ag-kit doctor --fix` to exclude it automatically.');
+        }
+      }
+    }
+
+    // 5. Check Memory system
+    const memoryDir = path.join(targetAgentsPath, 'memory');
+    const requiredMemoryFiles = ['MEMORY.md', 'architectural-decisions.md', 'learnings-gotchas.md', 'project-conventions.md'];
+    let memoryOk = true;
+    if (await fs.pathExists(memoryDir)) {
+      for (const f of requiredMemoryFiles) {
+        if (!await fs.pathExists(path.join(memoryDir, f))) {
+          memoryOk = false;
+          console.log(`⚠️ Missing memory file: memory/${f}`);
+        }
+      }
+    } else {
+      memoryOk = false;
+      console.log('⚠️ Memory directory is missing.');
+    }
+
+    if (memoryOk) {
+      console.log('✅ Persistent memory system is fully configured.');
+    } else {
+      console.log('👉 Fix: Run `longln-ag-kit sync` to restore missing memory templates safely.');
+    }
+
+    console.log('\nAudit complete.');
   });
 
 program.parse(process.argv);

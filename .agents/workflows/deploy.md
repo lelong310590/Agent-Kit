@@ -1,36 +1,40 @@
 ---
-description: Quy trình đóng gói, ghi nhận thay đổi và sẵn sàng bàn giao sản phẩm.
+description: Process for packaging, recording changes, and preparing the product for handover.
 ---
 
 # Workflow Command: /deploy
 
-Quy trình đóng gói, ghi nhận thay đổi và sẵn sàng bàn giao sản phẩm.
+Process for packaging, recording changes, and preparing the product for handover.
 
 ---
 
-## 📋 Mô Tả
-Lệnh `/deploy` được gọi khi tất cả các tính năng đã được code xong và vượt qua bước xác minh chất lượng. Quy trình này tập trung vào việc tạo tài liệu bàn giao rõ ràng và hướng dẫn triển khai sản phẩm lên môi trường staging hoặc production.
+## 📋 Description
+
+The `/deploy` command is called when all features have been coded and have passed quality verification. This process focuses on creating clear handover documentation and deployment instructions for staging or production environments.
 
 ---
 
-## 🔄 Các Bước Thực Hiện (Execution Steps)
+## 🔄 Execution Steps
 
-### Bước 1: Kiểm Tra Build Sản Phẩm (Production Build Validation)
-1.  Chạy thử lệnh đóng gói dự án để chắc chắn bundle được build thành công, không gặp lỗi biên dịch trong môi trường production:
+### Step 1: Production Build Validation
+
+1.  Run the project packaging command to ensure the bundle builds successfully without compilation errors in the production environment:
     ```bash
-    # Ví dụ
+    # Example
     npm run build
     ```
-2.  Kiểm tra kích thước các gói file sinh ra (bundle size) xem có vượt ngưỡng quy định không.
+2.  Check the size of the generated bundle files (bundle size) to ensure they do not exceed project thresholds.
 
-### Bước 2: Tạo Tài Liệu Bàn Giao (Walkthrough Documentation)
-1.  Tạo hoặc cập nhật file `walkthrough.md` tại thư mục `.system_generated/` hoặc thư mục do IDE chỉ định dựa trên biểu mẫu tại [templates/walkthrough.template.md](file:///d:/work/ag-tool-kit/templates/walkthrough.template.md).
-2.  Tài liệu phải liệt kê rõ:
-    *   Các thay đổi đã thực hiện (kèm link clickable đến các file).
-    *   Các kết quả kiểm thử (unit tests passed, lint passed).
-    *   Đính kèm các hình ảnh, video minh họa (nếu có thay đổi về giao diện người dùng).
+### Step 2: Create Handover Documentation (Walkthrough Documentation)
 
-### Bước 3: Đẩy Code & Kích Hoạt CI/CD (Release & Deploy)
-1.  Tạo commit tin nhắn đúng chuẩn Conventional Commits.
-2.  Đẩy code lên nhánh remote (Git Push) để kích hoạt pipeline CI/CD (GitHub Actions, GitLab CI).
-3.  Cung cấp link log của pipeline hoặc hướng dẫn deploy thủ công nếu dự án không cấu hình tự động.
+1.  Create or update the `walkthrough.md` file in the `.system_generated/` directory or the directory specified by the IDE, based on the template at [templates/walkthrough.template.md](file:///d:/work/ag-tool-kit/templates/walkthrough.template.md).
+2.  The documentation must clearly list:
+    *   Changes made (including clickable links to the files).
+    *   Test results (unit tests passed, lint passed).
+    *   Attach illustrative images or videos (if there are changes to the user interface).
+
+### Step 3: Push Code & Trigger CI/CD (Release & Deploy)
+
+1.  Create a commit message following the Conventional Commits standard.
+2.  Push code to the remote branch (Git Push) to trigger the CI/CD pipeline (GitHub Actions, GitLab CI).
+3.  Provide the pipeline log link or manual deployment instructions if the project is not configured for automatic deployment.

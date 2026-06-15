@@ -1,24 +1,24 @@
-# Nguyên Tắc Thiết Kế REST
+# REST Design Principles
 
-> Thiết kế API hướng tài nguyên - sử dụng danh từ, không dùng động từ.
+> Resource-oriented API design - use nouns, not verbs.
 
-## Quy Tắc Đặt Tên Tài Nguyên
+## Resource Naming Rules
 
 ```
-Nguyên tắc:
-├── Sử dụng DANH TỪ, không dùng động từ (tài nguyên, không phải hành động)
-├── Sử dụng danh từ số NHIỀU (/users thay vì /user)
-├── Sử dụng chữ thường kết hợp dấu gạch ngang (/user-profiles)
-├── Lồng ghép cho các mối quan hệ (/users/123/posts)
-└── Giữ cấu trúc nông (tối đa 3 cấp độ lồng nhau)
+Principles:
+├── Use NOUNS, not verbs (resources, not actions)
+├── Use PLURAL nouns (/users instead of /user)
+├── Use lowercase with hyphens (/user-profiles)
+├── Nest for relationships (/users/123/posts)
+└── Keep structure shallow (maximum 3 levels of nesting)
 ```
 
-## Lựa Chọn Phương Thức HTTP
+## HTTP Method Selection
 
-| Phương thức | Mục đích | Idempotent (Khả trùng)? | Có Body (Thân tin nhắn)? |
+| Method | Purpose | Idempotent? | Has Body? |
 |--------|---------|-------------|-------|
-| **GET** | Đọc (các) tài nguyên | Có | Không |
-| **POST** | Tạo tài nguyên mới | Không | Có |
-| **PUT** | Thay thế toàn bộ tài nguyên | Có | Có |
-| **PATCH** | Cập nhật một phần tài nguyên | Không | Có |
-| **DELETE** | Xóa tài nguyên | Có | Không |
+| **GET** | Read resource(s) | Yes | No |
+| **POST** | Create new resource | No | Yes |
+| **PUT** | Replace entire resource | Yes | Yes |
+| **PATCH** | Update resource partially | No | Yes |
+| **DELETE** | Delete resource | Yes | No |

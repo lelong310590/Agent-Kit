@@ -1,44 +1,48 @@
 ---
-description: Quy trình xác minh chất lượng và tính ổn định của mã nguồn sau khi chỉnh sửa.
+description: Process for verifying the quality and stability of source code after modifications.
 ---
 
 # Workflow Command: /verify
 
-Quy trình xác minh chất lượng và tính ổn định của mã nguồn sau khi chỉnh sửa.
+Process for verifying the quality and stability of source code after modifications.
 
 ---
 
-## 📋 Mô Tả
-Lệnh `/verify` được gọi sau khi hoàn thành việc viết code nhằm đảm bảo mã nguồn tuân thủ các quy tắc chất lượng, không bị lỗi cú pháp, vượt qua các bài kiểm thử và hoạt động trơn tru.
+## 📋 Description
+
+The `/verify` command is called after completing coding to ensure that the source code adheres to quality standards, has no syntax errors, passes all test cases, and runs smoothly.
 
 ---
 
-## 🔄 Các Bước Thực Hiện (Execution Steps)
+## 🔄 Execution Steps
 
-### Bước 1: Kiểm Tra Tĩnh (Static Verification)
-1.  Chạy các công cụ định dạng code (formatter) và linter của dự án để đảm bảo không có lỗi style:
+### Step 1: Static Verification
+
+1.  Run the code formatter and linter of the project to ensure there are no style guidelines violations:
     ```bash
-    # Ví dụ
+    # Example
     npm run lint
-    # hoặc
+    # or
     flake8 .
     ```
-2.  Chạy trình biên dịch hoặc kiểm tra kiểu tĩnh (typecheck):
+2.  Run the compiler or static type checker:
     ```bash
-    # Ví dụ
+    # Example
     npm run typecheck
     ```
 
-### Bước 2: Chạy Kiểm Thử Tự Động (Automated Testing)
-1.  Chạy toàn bộ test suite hoặc các test module liên quan trực tiếp đến tính năng vừa viết:
+### Step 2: Automated Testing
+
+1.  Run the entire test suite or the specific test modules directly related to the newly written feature:
     ```bash
-    # Ví dụ
+    # Example
     npm run test
-    # hoặc
+    # or
     pytest
     ```
-2.  Đảm bảo tỷ lệ bao phủ kiểm thử (test coverage) đạt yêu cầu của dự án.
+2.  Ensure that the test coverage meets the project requirements.
 
-### Bước 3: Kiểm Tra Thực Tế (Runtime & Manual Verification)
-1.  Chạy ứng dụng trong môi trường local dev server.
-2.  Thực hiện gọi thử các API mới bằng curl hoặc kiểm tra trực tiếp giao diện trên trình duyệt để đảm bảo trải nghiệm người dùng (UX) và hiệu năng tải tốt.
+### Step 3: Runtime & Manual Verification
+
+1.  Run the application in the local dev server environment.
+2.  Call new APIs using curl or verify the interface directly in the browser to ensure a good user experience (UX) and loading performance.

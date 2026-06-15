@@ -1,5 +1,5 @@
 ---
-description: Lưu trữ thông tin vào bộ nhớ dài hạn để gọi lại trong các phiên làm việc sau. Lưu các tùy chọn, quy ước, quyết định và bối cảnh.
+description: Store information in long-term memory to retrieve in future sessions. Save preferences, conventions, decisions, and context.
 ---
 
 # /remember — Persistent Memory Management

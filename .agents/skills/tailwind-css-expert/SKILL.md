@@ -1,21 +1,21 @@
 ---
 name: tailwind-css-expert
-description: Chuyên gia thiết kế giao diện bằng Tailwind CSS. Hướng dẫn sử dụng utility classes, responsive breakpoints, dark mode, custom configuration, và kết hợp tailwind-merge/clsx.
-when_to_use: "Dự án phát hiện có package.json chứa 'tailwindcss' hoặc có các file cấu hình tailwind.config.js, tailwind.config.ts hoặc imports tailwindcss trong CSS"
+description: Tailwind CSS design expert. Guidelines for using utility classes, responsive breakpoints, dark mode, custom configuration, and combining tailwind-merge/clsx.
+when_to_use: "Project is detected to have 'tailwindcss' in package.json, or has configuration files like tailwind.config.js, tailwind.config.ts, or imports tailwindcss in CSS"
 ---
 
-# Kỹ Năng: Tailwind CSS Expert
+# Skill: Tailwind CSS Expert
 
-Chỉ dẫn chuyên sâu này được tự động nạp khi phát hiện dự án sử dụng Tailwind CSS để thiết kế giao diện.
+This in-depth guide is automatically loaded when the project is detected to use Tailwind CSS for UI design.
 
 ---
 
 ## 🎨 1. Utility-First Mindset & Clean Classes
 
-*   **Tránh Lạm Dụng `@apply`**: Chỉ sử dụng `@apply` trong file CSS cho các class tiện ích lặp lại cực kỳ nhiều (như custom scrollbar, typography của bên thứ ba). Ưu tiên viết utility classes trực tiếp trong HTML/React component để dễ bảo trì.
-*   **Sắp Xếp Class Hợp Lý**: Sắp xếp class theo trình tự logic (Layout -> Box Model -> Typography -> Visual -> Interactive/State -> Responsive):
-    *   *Ví dụ*: `flex items-center justify-between w-full p-4 text-white bg-blue-500 hover:bg-blue-600 md:p-6`
-*   **Tránh Trùng Lặp & Ghi Đè Class**: Luôn sử dụng `tailwind-merge` kết hợp với `clsx` khi ghép class động để đảm bảo các class sau ghi đè chính xác class trước (không bị CSS cascade mặc định làm lỗi hiển thị):
+*   **Avoid Overusing `@apply`**: Only use `@apply` in CSS files for utility classes that are repeated extremely often (e.g., custom scrollbars, third-party typography). Prefer writing utility classes directly in HTML/React components for easier maintenance.
+*   **Organize Classes Logically**: Arrange classes in a logical sequence (Layout -> Box Model -> Typography -> Visual -> Interactive/State -> Responsive):
+    *   *Example*: `flex items-center justify-between w-full p-4 text-white bg-blue-500 hover:bg-blue-600 md:p-6`
+*   **Avoid Class Duplication & Overwrites**: Always use `tailwind-merge` combined with `clsx` when merging classes dynamically to ensure that latter classes correctly override former ones (avoiding display issues caused by default CSS cascade):
     ```typescript
     import { twMerge } from 'tailwind-merge';
     import { clsx, ClassValue } from 'clsx';
@@ -29,17 +29,17 @@ Chỉ dẫn chuyên sâu này được tự động nạp khi phát hiện dự 
 
 ## 📱 2. Responsive & State Prefixes
 
-*   **Mobile First**: Thiết kế mặc định cho màn hình di động (không có prefix), sau đó thêm các breakpoint (`sm:`, `md:`, `lg:`, `xl:`) để tinh chỉnh giao diện trên màn hình lớn.
-*   **Interactive States**: Tận dụng tối đa các state prefix như `hover:`, `focus:`, `active:`, `disabled:` để tạo micro-interaction.
-*   **Dark Mode**: Sử dụng prefix `dark:` để định nghĩa màu sắc cho chế độ tối. Đảm bảo cấu hình dark mode trong tailwind config khớp với cơ chế chuyển đổi class của ứng dụng (ví dụ: selector `class` trên thẻ `<html>` hoặc `<body>`).
+*   **Mobile First**: Design by default for mobile screens (no prefix), then add breakpoints (`sm:`, `md:`, `lg:`, `xl:`) to adjust the interface on larger screens.
+*   **Interactive States**: Maximize the use of state prefixes like `hover:`, `focus:`, `active:`, and `disabled:` to create micro-interactions.
+*   **Dark Mode**: Use the `dark:` prefix to define colors for dark mode. Ensure the dark mode configuration in tailwind config matches the application's class switching mechanism (e.g., the `class` selector on the `<html>` or `<body>` tag).
 
 ---
 
-## ⚠️ 3. Quy Tắc Tránh Lỗi Biên Dịch (Purge/JIT Rules)
+## ⚠️ 3. Compilation Error Prevention Rules (Purge/JIT Rules)
 
-*   **Không Nối Chuỗi Class Động**: Tailwind CSS quét mã nguồn tĩnh để sinh CSS tương ứng. **Không bao giờ** viết class bằng cách ghép nối chuỗi động:
-    *   *Sai*: `text-${color}-500` (Tailwind sẽ không nhận diện được để build).
-    *   *Đúng*: Sử dụng object map hoặc viết đầy đủ tên class:
+*   **No Dynamic Class Concatenation**: Tailwind CSS scans source code statically to generate the corresponding CSS. **Never** construct classes by dynamic string concatenation:
+    *   *Wrong*: `text-${color}-500` (Tailwind will not detect it to build).
+    *   *Right*: Use an object map or write the full class names:
         ```typescript
         const colorClasses = {
           red: 'text-red-500',

@@ -1,18 +1,18 @@
-# Chiến Lược Quản Lý Phiên Bản (Versioning Strategies)
+# Versioning Strategies
 
-> Lập kế hoạch cho sự phát triển của API ngay từ ngày đầu tiên.
+> Plan for API evolution from day one.
 
-## Các Yếu Tố Quyết Định
+## Decision Factors
 
-| Chiến lược | Triển khai | Đánh đổi |
+| Strategy | Implementation | Trade-offs |
 |----------|---------------|------------|
-| **URI** | /v1/users | Rõ ràng, dễ cấu hình cache |
-| **Header** | Accept-Version: 1 | URL gọn gàng hơn, khó tự động khám phá hơn |
-| **Query** | ?version=1 | Dễ dàng thêm mới, nhưng gây lộn xộn |
-| **None** | Phát triển cẩn thận | Tốt nhất cho nội bộ, rủi ro cao cho API công khai |
+| **URI** | /v1/users | Explicit, easy to configure cache |
+| **Header** | Accept-Version: 1 | Cleaner URLs, harder to discover automatically |
+| **Query** | ?version=1 | Easy to add, but adds clutter |
+| **None** | Careful evolution | Best for internal use, high risk for public APIs |
 
-## Thực Hành Tốt Nhất (Best Practices)
+## Best Practices
 
-- Tránh các thay đổi phá vỡ tương thích (breaking changes) trừ khi thực sự bắt buộc.
-- Sử dụng phiên bản trên URL (/v1) cho các API công khai hoặc hướng ngoại để đảm bảo tính đơn giản.
-- Giữ các phiên bản cũ hoạt động song song kèm theo chính sách ngừng hỗ trợ (deprecation policy) rõ ràng.
+- Avoid breaking changes unless absolutely necessary.
+- Use versioning in the URL (/v1) for public or external APIs to ensure simplicity.
+- Keep old versions active alongside a clear deprecation policy.

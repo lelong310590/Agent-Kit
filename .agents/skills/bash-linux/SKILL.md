@@ -7,7 +7,7 @@ allowed-tools: Read, Write, Edit, Glob, Grep, Bash
 
 # Bash Linux Patterns
 
-&gt; Essential patterns for Bash on Linux/macOS.
+> Essential patterns for Bash on Linux/macOS.
 
 ---
 

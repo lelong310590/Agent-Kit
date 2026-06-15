@@ -1,31 +1,35 @@
 ---
-description: Quy trình gỡ lỗi và phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA) một cách hệ thống.
+description: Systematic process for debugging and Root Cause Analysis (RCA).
 ---
 
 # Workflow Command: /debug
 
-Quy trình gỡ lỗi và phân tích nguyên nhân gốc rễ (Root Cause Analysis - RCA) một cách hệ thống.
+Systematic process for debugging and Root Cause Analysis (RCA).
 
 ---
 
-## 📋 Mô Tả
-Lệnh `/debug` được kích hoạt khi phát hiện lỗi hệ thống, kiểm thử thất bại (failed tests) hoặc ứng dụng hoạt động không đúng kỳ vọng. Quy trình này giúp định vị lỗi nhanh chóng và đưa ra giải pháp khắc phục an toàn nhất.
+## 📋 Description
+
+The `/debug` command is triggered when system errors, failed tests, or unexpected application behaviors are detected. This process helps locate errors quickly and provide the safest resolution.
 
 ---
 
-## 🔄 Các Bước Thực Hiện (Execution Steps)
+## 🔄 Execution Steps
 
-### Bước 1: Thu Thập Thông Tin & Tái Hiện (Information Gathering)
-1.  Đọc kỹ log lỗi (stack trace), mã lỗi (status codes) và ghi nhận thời điểm xảy ra lỗi.
-2.  Xác định các điều kiện đầu vào (input), trạng thái hệ thống (state) dẫn đến việc lỗi xuất hiện.
-3.  Thử tái hiện lỗi bằng cách chạy script test hoặc gọi thử API/CLI tương ứng.
+### Step 1: Information Gathering & Reproduction
 
-### Bước 2: Phân Tích Nguyên Nhân (Root Cause Analysis)
-1.  Truy vết mã nguồn dọc theo luồng dữ liệu (data flow) từ điểm báo lỗi ngược về nguồn phát sinh.
-2.  Đưa ra các giả thuyết (hypotheses) về nguyên nhân gây lỗi.
-3.  Kiểm tra các giả thuyết bằng cách đọc code hoặc chèn log bổ sung (debug logging) để kiểm tra giá trị biến.
+1.  Carefully read error logs (stack trace), error codes (status codes), and record when the error occurred.
+2.  Identify the input conditions and system state that lead to the occurrence of the error.
+3.  Attempt to reproduce the error by running test scripts or invoking the corresponding API/CLI.
 
-### Bước 3: Đề Xuất & Sửa Lỗi (Remediation)
-1.  Trình bày nguyên nhân lỗi và đề xuất các phương án khắc phục (phân tích ưu/nhược điểm từng cách).
-2.  Sau khi người dùng đồng ý phương án, thực hiện sửa đổi mã nguồn.
-3.  Chạy lại các test liên quan để đảm bảo lỗi đã được khắc phục hoàn toàn và không phát sinh lỗi mới (regression).
+### Step 2: Root Cause Analysis
+
+1.  Trace the source code along the data flow from the error reporting point back to its origin.
+2.  Formulate hypotheses about the cause of the error.
+3.  Test the hypotheses by reading the code or inserting additional debug logging to check variable values.
+
+### Step 3: Remediation & Verification
+
+1.  Present the cause of the error and propose remediation plans (analyzing the pros and cons of each approach).
+2.  Once the user approves the approach, apply changes to the source code.
+3.  Rerun relevant tests to ensure the error is fully resolved and no new regressions are introduced.

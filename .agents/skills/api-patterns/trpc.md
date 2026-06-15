@@ -1,41 +1,41 @@
-# Nguyên Tắc tRPC
+# tRPC Principles
 
-> An toàn kiểu dữ liệu end-to-end cho các dự án TypeScript monorepo.
+> End-to-end type safety for TypeScript monorepo projects.
 
-## Khi Nào Nên Sử Dụng
-
-```
-✅ Phù hợp hoàn hảo:
-├── TypeScript được sử dụng ở cả hai đầu (frontend và backend)
-├── Cấu trúc dự án dạng Monorepo
-├── Các công cụ nội bộ (internal tools)
-├── Phát triển sản phẩm nhanh chóng (rapid development)
-└── Yêu cầu cao về an toàn kiểu dữ liệu (type safety)
-
-❌ Không phù hợp:
-├── Các client không sử dụng TypeScript
-├── API công khai (Public API)
-├── Yêu cầu tuân thủ các quy ước của REST
-└── Backend được viết bằng nhiều ngôn ngữ khác nhau
-```
-
-## Lợi Ích Chính
+## When to Use
 
 ```
-Tại sao dùng tRPC:
-├── Không cần bảo trì schema (Zero schema maintenance)
-├── Tự động suy luận kiểu dữ liệu end-to-end (type inference)
-├── IDE tự động gợi ý code (autocomplete) trên toàn bộ stack
-├── Các thay đổi API được phản ánh ngay lập tức
-└── Không yêu cầu bước tạo code trung gian (code generation)
+✅ Best Suited For:
+├── TypeScript used on both ends (frontend and backend)
+├── Monorepo project structure
+├── Internal tools
+├── Rapid development
+└── High requirements for type safety
+
+❌ Not Suited For:
+├── Non-TypeScript clients
+├── Public APIs
+├── Strict REST compliance requirements
+└── Backend written in multiple different languages
 ```
 
-## Các Mẫu Thiết Kế Tích Hợp
+## Key Benefits
 
 ```
-Các thiết lập phổ biến:
-├── Next.js + tRPC (phổ biến nhất)
-├── Monorepo với các kiểu dữ liệu dùng chung (shared types)
+Why use tRPC:
+├── Zero schema maintenance
+├── Automatic end-to-end type inference
+├── IDE autocomplete across the entire stack
+├── API changes reflected immediately
+└── No intermediate code generation step required
+```
+
+## Integration Patterns
+
+```
+Common setups:
+├── Next.js + tRPC (most common)
+├── Monorepo with shared types
 ├── Remix + tRPC
-└── Bất kỳ frontend + backend TS nào
+└── Any TS frontend + backend
 ```
