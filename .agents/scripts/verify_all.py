@@ -12,7 +12,7 @@ if sys.platform.startswith('win'):
 def run_command(command, cwd):
     print(f"🚀 Running: {' '.join(command)}")
     try:
-        result = subprocess.run(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, check=True)
+        result = subprocess.run(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', check=True)
         return True, result.stdout
     except subprocess.CalledProcessError as e:
         return False, f"Stdout:\n{e.stdout}\nStderr:\n{e.stderr}"
