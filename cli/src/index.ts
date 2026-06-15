@@ -4,13 +4,91 @@ import * as fs from 'fs-extra';
 import * as path from 'path';
 import * as os from 'os';
 import * as https from 'https';
+import * as readline from 'readline';
 
 const program = new Command();
 
 program
   .name('longln-ag-kit')
   .description('Local CLI tool to initialize and manage AG Tool Kit configurations')
-  .version('1.2.0');
+  .version('1.3.0');
+
+// Configuration Interface and Constants
+interface AgKitConfig {
+  version: string;
+  link: boolean;
+  hooks: boolean;
+  exclude: boolean;
+  installedSkills: string[];
+}
+
+const CONFIG_FILE_NAME = 'ag-kit.config.json';
+
+// Helper to write/update config
+async function updateConfig(cwd: string, updates: Partial<AgKitConfig>) {
+  const configPath = path.join(cwd, CONFIG_FILE_NAME);
+  let currentConfig: AgKitConfig = {
+    version: '1.3.0',
+    link: false,
+    hooks: true,
+    exclude: true,
+    installedSkills: [],
+  };
+  
+  if (await fs.pathExists(configPath)) {
+    try {
+      currentConfig = await fs.readJson(configPath);
+    } catch (e) {
+      // Ignore reading error, overwrite
+    }
+  }
+  
+  const newConfig = { ...currentConfig, ...updates };
+  await fs.writeJson(configPath, newConfig, { spaces: 2 });
+}
+
+// Helper to read config
+async function readConfig(cwd: string): Promise<AgKitConfig | null> {
+  const configPath = path.join(cwd, CONFIG_FILE_NAME);
+  if (await fs.pathExists(configPath)) {
+    try {
+      return await fs.readJson(configPath);
+    } catch (e) {
+      return null;
+    }
+  }
+  return null;
+}
+
+// Helper to prompt for a single line text question
+function promptQuestion(query: string): Promise<string> {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  return new Promise((resolve) => {
+    rl.question(query, (answer) => {
+      rl.close();
+      resolve(answer.trim());
+    });
+  });
+}
+
+// Helper to prompt for a selection from a list of options
+async function promptSelection(title: string, options: string[]): Promise<number> {
+  console.log(`\n=== ${title} ===`);
+  options.forEach((opt, idx) => {
+    console.log(`  [${idx + 1}] ${opt}`);
+  });
+  while (true) {
+    const ans = await promptQuestion(`Select an option (1-${options.length}): `);
+    const num = parseInt(ans, 10);
+    if (!isNaN(num) && num >= 1 && num <= options.length) {
+      return num - 1; // 0-based index
+    }
+    console.log(`❌ Invalid choice. Please choose a number between 1 and ${options.length}.`);
+  }
+}
 
 // Helper to parse YAML frontmatter from markdown content
 function parseFrontmatter(content: string): { [key: string]: string } {
@@ -179,6 +257,17 @@ program
 
     // Auto fix Git exclude
     await fixGitExclude(cwd);
+
+    // Create ag-kit.config.json configuration file
+    await updateConfig(cwd, {
+      version: '1.3.0',
+      link: !!options.link,
+      hooks: !!options.hooks,
+      exclude: true,
+      installedSkills: []
+    });
+    console.log('✅ Configuration file `ag-kit.config.json` created.');
+
     console.log('\n💡 Recommendation: Keep `.agents/` in `.git/info/exclude` to ensure AI autocomplete works!');
   });
 
@@ -228,9 +317,9 @@ program
   });
 
 program
-  .command('add-skill <skill>')
+  .command('add-skill [skill]')
   .description('Add a specific skill from local templates or download from remote GitHub repository')
-  .action(async (skillName) => {
+  .action(async (skillNameArg) => {
     const cwd = process.cwd();
     const targetAgentsPath = path.join(cwd, '.agents');
 
@@ -239,12 +328,39 @@ program
       process.exit(1);
     }
 
+    let skillName = skillNameArg;
+    if (!skillName) {
+      const sourceTemplate = path.resolve(__dirname, '../templates');
+      const skillsTemplatePath = path.join(sourceTemplate, 'skills');
+      if (await fs.pathExists(skillsTemplatePath)) {
+        const skillsList = await fs.readdir(skillsTemplatePath);
+        if (skillsList.length === 0) {
+          console.error('❌ Error: No available skills found in templates pool.');
+          process.exit(1);
+        }
+        const selectedIdx = await promptSelection('Select a Skill to install', skillsList);
+        skillName = skillsList[selectedIdx];
+      } else {
+        console.error('❌ Error: Templates pool not found. Cannot run wizard.');
+        process.exit(1);
+      }
+    }
+
     const sourceTemplate = path.resolve(__dirname, '../templates');
     const skillSourcePath = path.join(sourceTemplate, 'skills', skillName);
     const skillTargetPath = path.join(targetAgentsPath, 'skills', skillName);
 
     if (await fs.pathExists(skillTargetPath)) {
       console.log(`ℹ️ Skill "${skillName}" is already installed in this project.`);
+      // Still update config if not present
+      const config = await readConfig(cwd);
+      if (config) {
+        const skills = config.installedSkills || [];
+        if (!skills.includes(skillName)) {
+          skills.push(skillName);
+          await updateConfig(cwd, { installedSkills: skills });
+        }
+      }
       return;
     }
 
@@ -253,6 +369,15 @@ program
       try {
         await fs.copy(skillSourcePath, skillTargetPath);
         console.log(`✅ Skill "${skillName}" added from local templates successfully.`);
+        // Update config
+        const config = await readConfig(cwd);
+        if (config) {
+          const skills = config.installedSkills || [];
+          if (!skills.includes(skillName)) {
+            skills.push(skillName);
+            await updateConfig(cwd, { installedSkills: skills });
+          }
+        }
         return;
       } catch (err: any) {
         console.error('❌ Failed to copy local skill:', err.message);
@@ -289,6 +414,15 @@ program
       }
 
       console.log(`✅ Skill "${skillName}" downloaded and installed successfully from remote GitHub.`);
+      // Update config
+      const config = await readConfig(cwd);
+      if (config) {
+        const skills = config.installedSkills || [];
+        if (!skills.includes(skillName)) {
+          skills.push(skillName);
+          await updateConfig(cwd, { installedSkills: skills });
+        }
+      }
     } catch (err: any) {
       console.error(`❌ Cloud Fetch failed: ${err.message}`);
       // Cleanup directory on failure
@@ -348,15 +482,32 @@ program
   });
 
 program
-  .command('create <type> <name>')
+  .command('create [type] [name]')
   .description('Create a new configuration template (type: agent, skill, workflow)')
-  .action(async (type, name) => {
+  .action(async (typeArg, nameArg) => {
     const cwd = process.cwd();
     const targetAgentsPath = path.join(cwd, '.agents');
 
     if (!await fs.pathExists(targetAgentsPath)) {
       console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
       process.exit(1);
+    }
+
+    let type = typeArg;
+    let name = nameArg;
+
+    if (!type) {
+      const types = ['agent', 'skill', 'workflow'];
+      const idx = await promptSelection('Select component type to create', types);
+      type = types[idx];
+    }
+
+    if (!name) {
+      name = await promptQuestion('Enter component name (alphanumeric and hyphens only): ');
+      if (!name) {
+        console.error('❌ Error: Component name cannot be empty.');
+        process.exit(1);
+      }
     }
 
     // Name validation
@@ -607,7 +758,87 @@ program
       console.log('👉 Fix: Run `longln-ag-kit sync` to restore missing memory templates safely.');
     }
 
+    // 6. Check Config File
+    const configPath = path.join(cwd, CONFIG_FILE_NAME);
+    if (await fs.pathExists(configPath)) {
+      try {
+        const config = await fs.readJson(configPath);
+        console.log(`✅ Configuration file \`${CONFIG_FILE_NAME}\` is present (v${config.version}).`);
+      } catch (e: any) {
+        console.log(`⚠️ Configuration file \`${CONFIG_FILE_NAME}\` is corrupted: ${e.message}`);
+        if (options.fix) {
+          await updateConfig(cwd, { version: '1.3.0' });
+          console.log(`🛠 Auto-fixed: Re-created a clean \`${CONFIG_FILE_NAME}\`.`);
+        } else {
+          console.log(`👉 Fix: Run \`longln-ag-kit doctor --fix\` to re-create a clean config.`);
+        }
+      }
+    } else {
+      console.log(`⚠️ Configuration file \`${CONFIG_FILE_NAME}\` is missing.`);
+      if (options.fix) {
+        const isSymlink = (await fs.lstat(targetAgentsPath)).isSymbolicLink();
+        await updateConfig(cwd, {
+          version: '1.3.0',
+          link: isSymlink,
+          hooks: await fs.pathExists(path.join(cwd, '.git', 'hooks', 'pre-commit')),
+          exclude: true,
+          installedSkills: []
+        });
+        console.log(`🛠 Auto-fixed: Created \`${CONFIG_FILE_NAME}\` based on existing setup.`);
+      } else {
+        console.log(`👉 Fix: Run \`longln-ag-kit doctor --fix\` to create it automatically.`);
+      }
+    }
+
     console.log('\nAudit complete.');
+  });
+
+program
+  .command('upgrade')
+  .description('Check for the latest version of @longlengoc90/ag-kit on npm registry and prompt to upgrade')
+  .action(async () => {
+    console.log('🔍 Checking npm registry for updates...');
+    const url = 'https://registry.npmjs.org/@longlengoc90/ag-kit/latest';
+    https.get(url, (res) => {
+      if (res.statusCode !== 200) {
+        console.error(`❌ Failed to fetch registry info. Status code: ${res.statusCode}`);
+        process.exit(1);
+      }
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const info = JSON.parse(data);
+          const latestVersion = info.version;
+          const currentVersion = '1.3.0';
+          
+          console.log(`Current version: ${currentVersion}`);
+          console.log(`Latest version:  ${latestVersion}`);
+          
+          const isNewer = (latest: string, current: string): boolean => {
+            const latestParts = latest.split('.').map(Number);
+            const currentParts = current.split('.').map(Number);
+            for (let i = 0; i < 3; i++) {
+              if (latestParts[i] > currentParts[i]) return true;
+              if (latestParts[i] < currentParts[i]) return false;
+            }
+            return false;
+          };
+
+          if (isNewer(latestVersion, currentVersion)) {
+            console.log('\n🚀 A new version is available!');
+            console.log(`👉 Run this command to upgrade:`);
+            console.log(`   npm install -g @longlengoc90/ag-kit`);
+          } else {
+            console.log('\n✅ You are already running the latest version (or a newer development version).');
+          }
+        } catch (e: any) {
+          console.error('❌ Failed to parse registry response:', e.message);
+        }
+      });
+    }).on('error', (err) => {
+      console.error('❌ Network error while checking for updates:', err.message);
+    });
   });
 
 program.parse(process.argv);
