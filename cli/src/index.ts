@@ -5,13 +5,14 @@ import * as path from 'path';
 import * as os from 'os';
 import * as https from 'https';
 import * as readline from 'readline';
+import { execSync } from 'child_process';
 
 const program = new Command();
 
 program
   .name('longln-ag-kit')
   .description('Local CLI tool to initialize and manage AG Tool Kit configurations')
-  .version('1.3.0');
+  .version('1.4.0');
 
 // Configuration Interface and Constants
 interface AgKitConfig {
@@ -28,7 +29,7 @@ const CONFIG_FILE_NAME = 'ag-kit.config.json';
 async function updateConfig(cwd: string, updates: Partial<AgKitConfig>) {
   const configPath = path.join(cwd, CONFIG_FILE_NAME);
   let currentConfig: AgKitConfig = {
-    version: '1.3.0',
+    version: '1.4.0',
     link: false,
     hooks: true,
     exclude: true,
@@ -260,7 +261,7 @@ program
 
     // Create ag-kit.config.json configuration file
     await updateConfig(cwd, {
-      version: '1.3.0',
+      version: '1.4.0',
       link: !!options.link,
       hooks: !!options.hooks,
       exclude: true,
@@ -767,7 +768,7 @@ program
       } catch (e: any) {
         console.log(`⚠️ Configuration file \`${CONFIG_FILE_NAME}\` is corrupted: ${e.message}`);
         if (options.fix) {
-          await updateConfig(cwd, { version: '1.3.0' });
+          await updateConfig(cwd, { version: '1.4.0' });
           console.log(`🛠 Auto-fixed: Re-created a clean \`${CONFIG_FILE_NAME}\`.`);
         } else {
           console.log(`👉 Fix: Run \`longln-ag-kit doctor --fix\` to re-create a clean config.`);
@@ -778,7 +779,7 @@ program
       if (options.fix) {
         const isSymlink = (await fs.lstat(targetAgentsPath)).isSymbolicLink();
         await updateConfig(cwd, {
-          version: '1.3.0',
+          version: '1.4.0',
           link: isSymlink,
           hooks: await fs.pathExists(path.join(cwd, '.git', 'hooks', 'pre-commit')),
           exclude: true,
@@ -791,6 +792,402 @@ program
     }
 
     console.log('\nAudit complete.');
+  });
+
+// Helper to get git info
+function getGitInfo(cwd: string): { branch: string; commit: string } {
+  try {
+    const branch = execSync('git rev-parse --abbrev-ref HEAD', { cwd, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    const commit = execSync('git rev-parse HEAD', { cwd, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim();
+    return { branch, commit };
+  } catch (e) {
+    return { branch: 'unknown', commit: 'unknown' };
+  }
+}
+
+// Setup snapshot command group
+const snapshotCmd = program.command('snapshot').description('Manage workspace state snapshots (progress and memory)');
+
+snapshotCmd
+  .command('save [name]')
+  .description('Save current workspace progress snapshot')
+  .option('-d, --desc <text>', 'Description/notes for this snapshot', '')
+  .action(async (nameArg, options) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    
+    if (!await fs.pathExists(targetAgentsPath)) {
+      console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+    
+    const gitInfo = getGitInfo(cwd);
+    const timeStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    
+    let snapName = nameArg;
+    if (!snapName) {
+      const branchSanitized = gitInfo.branch.replace(/[^a-zA-Z0-9-]/g, '_');
+      snapName = `snapshot_${timeStr}_${branchSanitized}`;
+    }
+    
+    const snapshotsDir = path.join(targetAgentsPath, 'snapshots');
+    const destSnapDir = path.join(snapshotsDir, snapName);
+    
+    if (await fs.pathExists(destSnapDir)) {
+      console.error(`❌ Error: Snapshot "${snapName}" already exists.`);
+      process.exit(1);
+    }
+    
+    console.log(`📸 Creating snapshot: ${snapName}...`);
+    await fs.ensureDir(destSnapDir);
+    
+    const copiedFiles: string[] = [];
+    
+    // 1. Copy .agents/memory/
+    const localMemoryDir = path.join(targetAgentsPath, 'memory');
+    if (await fs.pathExists(localMemoryDir)) {
+      const destMemory = path.join(destSnapDir, '.agents', 'memory');
+      await fs.copy(localMemoryDir, destMemory);
+      copiedFiles.push('.agents/memory/');
+    }
+    
+    // 2. Copy root files: task.md, implementation_plan.md, walkthrough.md
+    const rootFiles = ['task.md', 'implementation_plan.md', 'walkthrough.md'];
+    for (const f of rootFiles) {
+      const srcFile = path.join(cwd, f);
+      if (await fs.pathExists(srcFile)) {
+        await fs.copy(srcFile, path.join(destSnapDir, f));
+        copiedFiles.push(f);
+      }
+    }
+    
+    // 3. Write metadata.json
+    const metadata = {
+      name: snapName,
+      createdAt: new Date().toISOString(),
+      git: gitInfo,
+      description: options.desc,
+      files: copiedFiles
+    };
+    
+    await fs.writeJson(path.join(destSnapDir, 'metadata.json'), metadata, { spaces: 2 });
+    console.log(`✅ Snapshot "${snapName}" saved successfully.`);
+  });
+
+snapshotCmd
+  .command('list')
+  .description('List all available snapshots')
+  .action(async () => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const snapshotsDir = path.join(targetAgentsPath, 'snapshots');
+    
+    if (!await fs.pathExists(snapshotsDir)) {
+      console.log('ℹ️ No snapshots found (snapshots directory does not exist).');
+      return;
+    }
+    
+    try {
+      const dirs = await fs.readdir(snapshotsDir);
+      const snapsInfo = [];
+      
+      for (const dir of dirs) {
+        const metaPath = path.join(snapshotsDir, dir, 'metadata.json');
+        if (await fs.pathExists(metaPath)) {
+          try {
+            const meta = await fs.readJson(metaPath);
+            snapsInfo.push(meta);
+          } catch (e) {
+            // corrupt metadata, skip
+          }
+        }
+      }
+      
+      if (snapsInfo.length === 0) {
+        console.log('ℹ️ No valid snapshots found.');
+        return;
+      }
+      
+      // Sort by date descending
+      snapsInfo.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      
+      console.log('--------------------------------------------------------------------------------');
+      console.log(`${'SNAPSHOT NAME'.padEnd(30)} ${'CREATED AT'.padEnd(20)} ${'BRANCH'.padEnd(15)} ${'DESCRIPTION'}`);
+      console.log('--------------------------------------------------------------------------------');
+      for (const info of snapsInfo) {
+        const dateStr = new Date(info.createdAt).toLocaleString();
+        let desc = info.description || '';
+        if (desc.length > 25) desc = desc.substring(0, 22) + '...';
+        const branchStr = info.git?.branch || 'unknown';
+        console.log(`${info.name.padEnd(30)} ${dateStr.padEnd(20)} ${branchStr.padEnd(15)} ${desc}`);
+      }
+      console.log('--------------------------------------------------------------------------------');
+    } catch (err: any) {
+      console.error('❌ Failed to list snapshots:', err.message);
+    }
+  });
+
+snapshotCmd
+  .command('restore <name>')
+  .description('Restore workspace progress from a snapshot')
+  .action(async (name) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const snapDir = path.join(targetAgentsPath, 'snapshots', name);
+    const metaPath = path.join(snapDir, 'metadata.json');
+    
+    if (!await fs.pathExists(snapDir) || !await fs.pathExists(metaPath)) {
+      console.error(`❌ Error: Snapshot "${name}" does not exist or is corrupted.`);
+      process.exit(1);
+    }
+    
+    console.log(`🔄 Restoring snapshot "${name}"...`);
+    const meta = await fs.readJson(metaPath);
+    const filesToRestore = [...(meta.files || [])];
+    
+    // 1. Create a safe backup before restoring
+    const backupDir = path.join(targetAgentsPath, 'snapshots', 'auto_backup_before_restore');
+    await fs.remove(backupDir); // clear old backup
+    await fs.ensureDir(backupDir);
+    
+    console.log('📦 Creating safety backup of current state at `.agents/snapshots/auto_backup_before_restore`...');
+    
+    const localMemoryDir = path.join(targetAgentsPath, 'memory');
+    if (await fs.pathExists(localMemoryDir)) {
+      await fs.copy(localMemoryDir, path.join(backupDir, '.agents', 'memory'));
+    }
+    const rootFiles = ['task.md', 'implementation_plan.md', 'walkthrough.md'];
+    for (const f of rootFiles) {
+      const srcFile = path.join(cwd, f);
+      if (await fs.pathExists(srcFile)) {
+        await fs.copy(srcFile, path.join(backupDir, f));
+      }
+    }
+    
+    // 2. Ask user before overwriting files at root
+    const rootFilesToRestore = filesToRestore.filter((f: string) => !f.includes('/') && !f.includes('\\'));
+    for (const f of rootFilesToRestore) {
+      const targetPath = path.join(cwd, f);
+      if (await fs.pathExists(targetPath)) {
+        const answer = await promptQuestion(`⚠️ File "${f}" already exists in project root. Overwrite? (y/N): `);
+        if (answer.toLowerCase() !== 'y') {
+          console.log(`⏭️ Skipped restoring file "${f}".`);
+          // Remove from list so it doesn't get copied
+          const idx = filesToRestore.indexOf(f);
+          if (idx !== -1) filesToRestore.splice(idx, 1);
+        }
+      }
+    }
+    
+    // 3. Restore files
+    for (const f of filesToRestore) {
+      if (f === '.agents/memory/') {
+        const srcMemory = path.join(snapDir, '.agents', 'memory');
+        if (await fs.pathExists(srcMemory)) {
+          await fs.copy(srcMemory, localMemoryDir, { overwrite: true });
+          console.log(`✅ Restored memory/ directory.`);
+        }
+      } else {
+        const srcFile = path.join(snapDir, f);
+        const destFile = path.join(cwd, f);
+        if (await fs.pathExists(srcFile)) {
+          await fs.copy(srcFile, destFile, { overwrite: true });
+          console.log(`✅ Restored "${f}".`);
+        }
+      }
+    }
+    console.log(`🎉 Snapshot "${name}" restored successfully.`);
+  });
+
+snapshotCmd
+  .command('delete <name>')
+  .description('Delete a workspace snapshot')
+  .action(async (name) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const snapDir = path.join(targetAgentsPath, 'snapshots', name);
+    
+    if (!await fs.pathExists(snapDir)) {
+      console.error(`❌ Error: Snapshot "${name}" does not exist.`);
+      process.exit(1);
+    }
+    
+    console.log(`🗑 Deleting snapshot "${name}"...`);
+    await fs.remove(snapDir);
+    console.log(`✅ Snapshot "${name}" deleted successfully.`);
+  });
+
+// Setup memory export/import subcommands
+memoryCmd
+  .command('export [output-file]')
+  .description('Export project memory and settings to a JSON file')
+  .option('--include-agents', 'Include custom agent configurations (.agents/agent/)')
+  .option('--include-skills', 'Include custom skill guides (.agents/skills/)')
+  .action(async (outputFileArg, options) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const memoryDir = path.join(targetAgentsPath, 'memory');
+    
+    if (!await fs.pathExists(targetAgentsPath) || !await fs.pathExists(memoryDir)) {
+      console.error('❌ Error: Directory `.agents/memory` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+    
+    const exportFile = outputFileArg || 'ag-memory-export.json';
+    const exportPath = path.resolve(cwd, exportFile);
+    
+    console.log(`📦 Exporting memory to ${exportFile}...`);
+    
+    const payload: any = {
+      exportedAt: new Date().toISOString(),
+      projectName: path.basename(cwd),
+      memory: {}
+    };
+    
+    // Read Memory files
+    const memoryFiles = await fs.readdir(memoryDir);
+    for (const f of memoryFiles) {
+      const filePath = path.join(memoryDir, f);
+      if ((await fs.stat(filePath)).isFile() && f.endsWith('.md')) {
+        payload.memory[f] = await fs.readFile(filePath, 'utf-8');
+      }
+    }
+    
+    // Read Agents if specified
+    if (options.includeAgents) {
+      const agentDir = path.join(targetAgentsPath, 'agent');
+      if (await fs.pathExists(agentDir)) {
+        payload.agents = {};
+        const agentFiles = await fs.readdir(agentDir);
+        for (const f of agentFiles) {
+          const filePath = path.join(agentDir, f);
+          if ((await fs.stat(filePath)).isFile() && f.endsWith('.md')) {
+            payload.agents[f] = await fs.readFile(filePath, 'utf-8');
+          }
+        }
+      }
+    }
+    
+    // Read Skills if specified
+    if (options.includeSkills) {
+      const skillsDir = path.join(targetAgentsPath, 'skills');
+      if (await fs.pathExists(skillsDir)) {
+        payload.skills = {};
+        const skillFolders = await fs.readdir(skillsDir);
+        for (const folder of skillFolders) {
+          const folderPath = path.join(skillsDir, folder);
+          if ((await fs.stat(folderPath)).isDirectory()) {
+            const files = await fs.readdir(folderPath);
+            for (const f of files) {
+              const filePath = path.join(folderPath, f);
+              if ((await fs.stat(filePath)).isFile() && f.endsWith('.md')) {
+                const relPath = `${folder}/${f}`;
+                payload.skills[relPath] = await fs.readFile(filePath, 'utf-8');
+              }
+            }
+          }
+        }
+      }
+    }
+    
+    await fs.writeJson(exportPath, payload, { spaces: 2 });
+    console.log(`✅ Successfully exported to ${exportPath}`);
+  });
+
+memoryCmd
+  .command('import <file-path>')
+  .description('Import memory and configurations from a JSON export file')
+  .option('-o, --overwrite', 'Overwrite existing files completely')
+  .option('-m, --merge', 'Merge bullet points for markdown lists, overwrite others', true)
+  .action(async (filePathArg, options) => {
+    const cwd = process.cwd();
+    const targetAgentsPath = path.join(cwd, '.agents');
+    const memoryDir = path.join(targetAgentsPath, 'memory');
+    
+    if (!await fs.pathExists(targetAgentsPath)) {
+      console.error('❌ Error: Directory `.agents` does not exist. Run `init` first.');
+      process.exit(1);
+    }
+    
+    const importPath = path.resolve(cwd, filePathArg);
+    if (!await fs.pathExists(importPath)) {
+      console.error(`❌ Error: Import file not found at ${importPath}`);
+      process.exit(1);
+    }
+    
+    console.log(`📥 Importing data from ${importPath}...`);
+    let data: any;
+    try {
+      data = await fs.readJson(importPath);
+    } catch (e: any) {
+      console.error(`❌ Failed to parse JSON export: ${e.message}`);
+      process.exit(1);
+    }
+    
+    await fs.ensureDir(memoryDir);
+    
+    // Helper to merge lists
+    const mergeMarkdownLists = (current: string, imported: string): string => {
+      const currentLines = current.split('\n');
+      const importedLines = imported.split('\n');
+      const mergedLines = [...currentLines];
+      
+      for (const line of importedLines) {
+        const trimmed = line.trim();
+        // Check if it's a list item line
+        if (trimmed.startsWith('-') || trimmed.startsWith('*')) {
+          // Check if this line already exists in current file
+          const exists = currentLines.some(l => l.trim() === trimmed);
+          if (!exists) {
+            mergedLines.push(line);
+          }
+        }
+      }
+      return mergedLines.join('\n');
+    };
+    
+    // 1. Import Memory
+    if (data.memory) {
+      for (const f of Object.keys(data.memory)) {
+        const targetFile = path.join(memoryDir, f);
+        const importedContent = data.memory[f];
+        
+        if (options.overwrite || !await fs.pathExists(targetFile)) {
+          await fs.writeFile(targetFile, importedContent);
+          console.log(`✅ Imported memory file: ${f} (overwritten/created)`);
+        } else {
+          // Merge mode (default)
+          const currentContent = await fs.readFile(targetFile, 'utf-8');
+          const merged = mergeMarkdownLists(currentContent, importedContent);
+          await fs.writeFile(targetFile, merged);
+          console.log(`✅ Merged memory file: ${f}`);
+        }
+      }
+    }
+    
+    // 2. Import Agents
+    if (data.agents) {
+      const agentDir = path.join(targetAgentsPath, 'agent');
+      await fs.ensureDir(agentDir);
+      for (const f of Object.keys(data.agents)) {
+        const targetFile = path.join(agentDir, f);
+        await fs.writeFile(targetFile, data.agents[f]);
+        console.log(`✅ Imported agent: ${f}`);
+      }
+    }
+    
+    // 3. Import Skills
+    if (data.skills) {
+      const skillsDir = path.join(targetAgentsPath, 'skills');
+      for (const relPath of Object.keys(data.skills)) {
+        const targetFile = path.join(skillsDir, relPath);
+        await fs.ensureDir(path.dirname(targetFile));
+        await fs.writeFile(targetFile, data.skills[relPath]);
+        console.log(`✅ Imported skill file: ${relPath}`);
+      }
+    }
+    
+    console.log(`🎉 Import completed successfully.`);
   });
 
 program
@@ -810,7 +1207,7 @@ program
         try {
           const info = JSON.parse(data);
           const latestVersion = info.version;
-          const currentVersion = '1.3.0';
+          const currentVersion = '1.4.0';
           
           console.log(`Current version: ${currentVersion}`);
           console.log(`Latest version:  ${latestVersion}`);
