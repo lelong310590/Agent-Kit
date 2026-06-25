@@ -1,6 +1,6 @@
 {
   "name": "@longlengoc90/ag-kit",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Local CLI to initialize AG Tool Kit configurations",
   "main": "dist/index.js",
   "files": [
